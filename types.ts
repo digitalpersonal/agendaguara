@@ -1,0 +1,68 @@
+export interface Service {
+  id: string;
+  name: string;
+  duration: number; // in minutes
+  price: number;
+}
+
+export interface Professional {
+  id: string;
+  name: string;
+  specialty: string;
+  rating?: number;
+  imageUrl: string;
+  services: Service[];
+}
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  text: string;
+  rating: number;
+  imageUrl: string;
+}
+
+// FIX: Add Plan interface to be used by PricingPlans component.
+export interface Plan {
+  id:string;
+  name: string;
+  price: string;
+  features: string[];
+  highlight: boolean;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  imageUrl: string;
+  role: 'client' | 'professional';
+}
+
+export interface ProfessionalSettings {
+  workHours: { start: string; end: string; };
+  workDays: number[]; // 0 for Sunday, 1 for Monday, etc.
+  blockedDays: string[]; // YYYY-MM-DD
+  blockedTimeSlots: { [date: string]: string[] };
+}
+
+export interface ProfessionalUser extends User {
+  role: 'professional';
+  specialty: string;
+  services: Service[];
+  settings: ProfessionalSettings;
+}
+
+export interface Appointment {
+  id: string;
+  service_name: string;
+  professional_name: string;
+  professional_image_url: string;
+  client_name: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  price: number;
+  status: 'upcoming' | 'completed';
+  pet_name?: string;
+  pet_breed?: string;
+}
