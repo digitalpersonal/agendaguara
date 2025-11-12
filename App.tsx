@@ -28,6 +28,11 @@ const App: React.FC = () => {
         console.error("Error fetching profile:", error);
         setCurrentUser(null);
       } else if (data) {
+        // Force admin role for specific email
+        if (session.user.email === 'digitalpersonal@gmail.com') {
+          data.role = 'admin';
+        }
+        
         if (data.role === 'professional') {
           // Ensure professional users have default settings if none exist
           const professionalUser: ProfessionalUser = {
