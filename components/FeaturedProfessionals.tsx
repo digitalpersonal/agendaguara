@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Professional } from '../types';
-import { supabase } from '../utils/supabase';
+import { supabase, getInitials, getColor } from '../utils/supabase';
 
 interface FeaturedProfessionalsProps {
     onScheduleClick: (professional: Professional) => void;
@@ -12,18 +12,18 @@ const StarIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-// Mock data as a fallback
-const mockProfessionals: Professional[] = [
-    { id: 'mock1', name: 'Juliana Silva', specialty: 'Cabelereira', rating: 4.9, imageUrl: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=400&q=80', services: [{ id: 's1', name: 'Corte', duration: 60, price: 80 }, { id: 's2', name: 'Escova', duration: 45, price: 60 }] },
-    { id: 'mock2', name: 'Ricardo Mendes', specialty: 'Fisioterapeuta', rating: 4.8, imageUrl: 'https://images.unsplash.com/photo-1581092921462-68f108d5e4a3?auto=format&fit=crop&w=400&q=80', services: [{ id: 's3', name: 'Sessão de Fisioterapia', duration: 50, price: 180 }] },
-    { id: 'mock3', name: 'Fernanda Costa', specialty: 'Veterinária', rating: 5.0, imageUrl: 'https://images.unsplash.com/photo-1583337130417-2346040b1715?auto=format&fit=crop&w=400&q=80', services: [{ id: 's4', name: 'Consulta Veterinária', duration: 45, price: 180 }] },
-    { id: 'mock4', name: 'Lucas Andrade', specialty: 'Nutricionista', rating: 4.7, imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=400&q=80', services: [{ id: 's5', name: 'Consulta Nutricional', duration: 60, price: 250 }] },
-];
-
 const ProfessionalCard: React.FC<{ professional: Professional; onScheduleClick: (professional: Professional) => void }> = ({ professional, onScheduleClick }) => {
+    const hasValidImage = professional.imageUrl && professional.imageUrl.startsWith('http');
+    
     return (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl flex flex-col">
-            <img className="w-full h-56 object-cover" src={professional.imageUrl} alt={professional.name} />
+            {hasValidImage ? (
+                <img className="w-full h-56 object-cover" src={professional.imageUrl} alt={professional.name} />
+            ) : (
+                <div className={`w-full h-56 flex items-center justify-center text-white font-bold ${getColor(professional.name)}`}>
+                    <span className="text-5xl">{getInitials(professional.name)}</span>
+                </div>
+            )}
             <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-xl font-bold text-stone-800">{professional.name}</h3>
                 <p className="text-rose-500 mb-2">{professional.specialty}</p>
@@ -55,14 +55,13 @@ export const FeaturedProfessionals: React.FC<FeaturedProfessionalsProps> = ({ on
             setLoading(true);
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, name, specialty, imageUrl:image_url, services')
+                .select('id, name, specialty, imageUrl:image_url, services, settings')
                 .eq('role', 'professional')
                 .limit(4);
 
             if (error) {
                 console.error("Error fetching professionals:", error.message);
                 setError('Não foi possível carregar os profissionais.');
-                setProfessionals(mockProfessionals); // Fallback to mock data on error
             } else if (data) {
                 setProfessionals(data as Professional[]);
             }
@@ -72,8 +71,28 @@ export const FeaturedProfessionals: React.FC<FeaturedProfessionalsProps> = ({ on
         fetchProfessionals();
     }, []);
 
-    if (loading) return <div className="text-center py-16">Carregando profissionais...</div>;
-    if (error && professionals.length === 0) return <div className="text-center py-16 text-red-500">{error}</div>;
+    const renderContent = () => {
+        if (loading) {
+            return <div className="text-center"><p>Carregando profissionais...</p></div>;
+        }
+        if (error) {
+            return <div className="text-center text-red-500">{error}</div>;
+        }
+        if (professionals.length > 0) {
+            return (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {professionals.map((prof) => (
+                        <ProfessionalCard key={prof.id} professional={prof} onScheduleClick={onScheduleClick} />
+                    ))}
+                </div>
+            );
+        }
+        return (
+            <div className="text-center">
+                <p className="text-stone-500">Nenhum profissional em destaque no momento.</p>
+            </div>
+        );
+    };
 
     return (
         <section id="professionals" className="py-16 bg-stone-100">
@@ -82,11 +101,7 @@ export const FeaturedProfessionals: React.FC<FeaturedProfessionalsProps> = ({ on
                     <h2 className="text-3xl md:text-4xl font-bold text-stone-800">Profissionais em Destaque</h2>
                     <p className="text-stone-500 mt-2 text-lg">Especialistas prontos para cuidar de você.</p>
                 </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {(professionals.length > 0 ? professionals : mockProfessionals).map((prof) => (
-                        <ProfessionalCard key={prof.id} professional={prof} onScheduleClick={onScheduleClick} />
-                    ))}
-                </div>
+                {renderContent()}
             </div>
         </section>
     );

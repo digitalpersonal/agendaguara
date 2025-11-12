@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const SparklesIcon: React.FC = () => (
@@ -19,9 +18,13 @@ const categories = [
     { name: 'Pet Shop', description: 'Todo o carinho e cuidado que seu melhor amigo merece.', Icon: DogIcon },
 ];
 
-export const ServiceCategories: React.FC = () => {
+interface ServiceCategoriesProps {
+    onCategoryClick: (categoryName: string) => void;
+}
+
+export const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onCategoryClick }) => {
     return (
-        <section className="py-16 bg-white">
+        <section id="services-section" className="py-16 bg-white">
             <div className="container mx-auto px-6">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl md:text-4xl font-bold text-stone-800">Nossos Serviços</h2>
@@ -29,13 +32,17 @@ export const ServiceCategories: React.FC = () => {
                 </div>
                 <div className="grid md:grid-cols-3 gap-8">
                     {categories.map((category) => (
-                        <div key={category.name} className="bg-stone-50 p-8 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+                        <button 
+                            key={category.name} 
+                            onClick={() => onCategoryClick(category.name)}
+                            className="bg-stone-50 p-8 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center w-full focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-opacity-50"
+                        >
                             <div className="inline-block p-4 bg-rose-100 text-rose-500 rounded-full mb-4">
                                 <category.Icon />
                             </div>
                             <h3 className="text-2xl font-semibold text-stone-800 mb-2">{category.name}</h3>
                             <p className="text-stone-500">{category.description}</p>
-                        </div>
+                        </button>
                     ))}
                 </div>
             </div>

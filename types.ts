@@ -12,6 +12,7 @@ export interface Professional {
   rating?: number;
   imageUrl: string;
   services: Service[];
+  settings?: ProfessionalSettings;
 }
 
 export interface Testimonial {
@@ -36,7 +37,8 @@ export interface User {
   name: string;
   email: string;
   imageUrl: string;
-  role: 'client' | 'professional';
+  role: 'client' | 'professional' | 'admin';
+  whatsapp?: string;
 }
 
 export interface ProfessionalSettings {
@@ -53,6 +55,10 @@ export interface ProfessionalUser extends User {
   settings: ProfessionalSettings;
 }
 
+export interface AdminUser extends User {
+  role: 'admin';
+}
+
 export interface Appointment {
   id: string;
   service_name: string;
@@ -62,7 +68,8 @@ export interface Appointment {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   price: number;
-  status: 'upcoming' | 'completed';
+  status: 'upcoming' | 'completed' | 'cancelled';
   pet_name?: string;
   pet_breed?: string;
+  notes?: string;
 }

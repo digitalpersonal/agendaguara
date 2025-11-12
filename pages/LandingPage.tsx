@@ -12,32 +12,42 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ user, onLoginRequired }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingContext, setBookingContext] = useState<{ professional?: Professional | null; category?: string | null }>({});
 
-  const handleOpenModal = useCallback((professional: Professional) => {
+  const handleScheduleFromProfessional = useCallback((professional: Professional) => {
     if (!user) {
       onLoginRequired();
     } else {
-      setSelectedProfessional(professional);
-      setIsModalOpen(true);
+      setBookingContext({ professional });
+      setIsBookingModalOpen(true);
+    }
+  }, [user, onLoginRequired]);
+
+  const handleScheduleFromCategory = useCallback((categoryName: string) => {
+    if (!user) {
+      onLoginRequired();
+    } else {
+      setBookingContext({ category: categoryName });
+      setIsBookingModalOpen(true);
     }
   }, [user, onLoginRequired]);
 
   const handleCloseModal = useCallback(() => {
-    setIsModalOpen(false);
-    setSelectedProfessional(null);
+    setIsBookingModalOpen(false);
+    setBookingContext({});
   }, []);
 
   return (
     <>
       <Hero />
-      <ServiceCategories />
-      <FeaturedProfessionals onScheduleClick={handleOpenModal} />
+      <ServiceCategories onCategoryClick={handleScheduleFromCategory} />
+      <FeaturedProfessionals onScheduleClick={handleScheduleFromProfessional} />
       <Testimonials />
-      {isModalOpen && selectedProfessional && user && (
+      {isBookingModalOpen && user && (
         <BookingModal
-          professional={selectedProfessional}
+          professional={bookingContext.professional}
+          category={bookingContext.category}
           user={user}
           onClose={handleCloseModal}
         />

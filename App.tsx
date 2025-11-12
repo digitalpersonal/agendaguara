@@ -4,14 +4,15 @@ import { Footer } from './components/Footer';
 import { LandingPage } from './pages/LandingPage';
 import { Dashboard } from './pages/Dashboard';
 import { ProfessionalDashboard } from './pages/ProfessionalDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
 import { AuthModal } from './components/AuthModal';
-import type { User, ProfessionalUser } from './types';
+import type { User, ProfessionalUser, AdminUser } from './types';
 import { supabase } from './utils/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | ProfessionalUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | ProfessionalUser | AdminUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +36,7 @@ const App: React.FC = () => {
             email: session.user.email!,
             imageUrl: data.image_url || `https://i.pravatar.cc/150?u=${session.user.id}`,
             role: 'professional',
+            whatsapp: data.whatsapp,
             specialty: data.specialty || 'Especialista em Destaque',
             services: data.services || [],
             settings: data.settings || {
@@ -89,6 +91,17 @@ const App: React.FC = () => {
     setIsAuthModalOpen(false);
   }, []);
 
+  const handleProfileUpdate = useCallback((updatedFields: Partial<User | ProfessionalUser>) => {
+    setCurrentUser(prevUser => {
+        if (!prevUser) return null;
+        const newUser = { ...prevUser, ...updatedFields };
+        if (newUser.role === 'professional') {
+            return newUser as ProfessionalUser;
+        }
+        return newUser as User;
+    });
+  }, []);
+
 
   const renderContent = () => {
     if (loading) {
@@ -98,9 +111,13 @@ const App: React.FC = () => {
     if (!currentUser) {
       return <LandingPage user={null} onLoginRequired={handleOpenAuthModal} />;
     }
+    
+    if (currentUser.role === 'admin') {
+      return <AdminDashboard user={currentUser as AdminUser} />;
+    }
 
     if (currentUser.role === 'professional') {
-      return <ProfessionalDashboard user={currentUser as ProfessionalUser} />;
+      return <ProfessionalDashboard user={currentUser as ProfessionalUser} onProfileUpdate={handleProfileUpdate} />;
     }
     return <Dashboard user={currentUser} />;
   }

@@ -20,7 +20,39 @@ const LogoIcon: React.FC = () => (
 
 export const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onSignUpClick, onLogout }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const navLinks = ["Home", "Serviços", "Profissionais", "Contato"];
+    const navLinks = [
+        { name: "Home", href: "#hero-section" },
+        { name: "Serviços", href: "#services-section" },
+        { name: "Profissionais", href: "#professionals" },
+        { name: "Contato", href: "#footer" }
+    ];
+
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+        e.preventDefault();
+        const targetId = href.substring(1);
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth' });
+        }
+        setIsMenuOpen(false); // Close mobile menu on click
+    };
+
+    // Handlers to also close mobile menu on action
+    const handleLogoutClick = () => {
+        onLogout();
+        setIsMenuOpen(false);
+    }
+    
+    const handleLoginClick = () => {
+        onLoginClick();
+        setIsMenuOpen(false);
+    }
+    
+    const handleSignUpClick = () => {
+        onSignUpClick();
+        setIsMenuOpen(false);
+    }
+
 
     return (
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg shadow-sm">
@@ -30,11 +62,16 @@ export const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onSignUpClic
                         <LogoIcon />
                         <h1 className="text-2xl font-bold text-stone-800">AgendaGuara</h1>
                     </div>
-                    <nav className="hidden md:flex items-center space-x-8">
-                        {navLinks.map(link => (
-                            <a key={link} href="#" className="text-stone-600 hover:text-rose-500 transition-colors duration-300">{link}</a>
-                        ))}
-                    </nav>
+                    
+                    {/* Desktop nav: only show when not logged in */}
+                    {!user && (
+                        <nav className="hidden md:flex items-center space-x-8">
+                            {navLinks.map(link => (
+                                <a key={link.name} href={link.href} onClick={(e) => handleNavClick(e, link.href)} className="text-stone-600 hover:text-rose-500 transition-colors duration-300 cursor-pointer">{link.name}</a>
+                            ))}
+                        </nav>
+                    )}
+                    
                     <div className="hidden md:flex items-center space-x-4">
                         {user ? (
                              <div className="flex items-center space-x-4">
@@ -49,29 +86,33 @@ export const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onSignUpClic
                         )}
                     </div>
                     <div className="md:hidden">
-                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-stone-600 focus:outline-none">
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-stone-600 focus:outline-none flex items-center space-x-1">
+                            <span className="font-medium">Menu</span>
                             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16m-7 6h7"}></path>
                             </svg>
                         </button>
                     </div>
                 </div>
+                
+                {/* Mobile menu */}
                 {isMenuOpen && (
                     <div className="md:hidden mt-4">
                         <nav className="flex flex-col space-y-4">
-                             {navLinks.map(link => (
-                                <a key={link} href="#" className="text-stone-600 hover:text-rose-500 transition-colors duration-300">{link}</a>
+                            {/* Mobile nav links: only show when not logged in */}
+                             {!user && navLinks.map(link => (
+                                <a key={link.name} href={link.href} onClick={(e) => handleNavClick(e, link.href)} className="text-stone-600 hover:text-rose-500 transition-colors duration-300 cursor-pointer">{link.name}</a>
                             ))}
-                            <div className="flex flex-col space-y-2 pt-4 border-t">
+                            <div className={`flex flex-col space-y-2 pt-4 ${!user ? 'border-t' : ''}`}>
                                 {user ? (
                                     <>
                                         <span className="font-semibold text-stone-700 text-left px-1">Olá, {user.name.split(' ')[0]}</span>
-                                        <button onClick={onLogout} className="text-left text-stone-600 hover:text-rose-500 transition-colors duration-300 px-1">Sair</button>
+                                        <button onClick={handleLogoutClick} className="text-left text-stone-600 hover:text-rose-500 transition-colors duration-300 px-1">Sair</button>
                                     </>
                                 ) : (
                                     <>
-                                        <button onClick={onLoginClick} className="text-left text-stone-600 hover:text-rose-500 transition-colors duration-300">Login</button>
-                                        <button onClick={onSignUpClick} className="w-full bg-rose-500 text-white px-4 py-2 rounded-full hover:bg-rose-600 transition-all duration-300">Cadastre-se</button>
+                                        <button onClick={handleLoginClick} className="text-left text-stone-600 hover:text-rose-500 transition-colors duration-300">Login</button>
+                                        <button onClick={handleSignUpClick} className="w-full bg-rose-500 text-white px-4 py-2 rounded-full hover:bg-rose-600 transition-all duration-300">Cadastre-se</button>
                                     </>
                                 )}
                             </div>

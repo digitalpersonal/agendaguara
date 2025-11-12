@@ -1,9 +1,10 @@
 
+
 import React, { useState, useMemo } from 'react';
 import type { Appointment, ProfessionalUser } from '../types';
 
 interface ProfessionalCalendarProps {
-    appointments: Appointment[];
+    appointmentsByDate: Map<string, Appointment[]>;
     settings: ProfessionalUser['settings'];
     onDateSelect: (date: Date) => void;
 }
@@ -16,7 +17,7 @@ const ChevronRightIcon = () => (
 );
 
 
-export const ProfessionalCalendar: React.FC<ProfessionalCalendarProps> = ({ appointments, settings, onDateSelect }) => {
+export const ProfessionalCalendar: React.FC<ProfessionalCalendarProps> = ({ appointmentsByDate, settings, onDateSelect }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -39,7 +40,7 @@ export const ProfessionalCalendar: React.FC<ProfessionalCalendarProps> = ({ appo
     
     const getAppointmentsForDay = (day: Date) => {
         const dateStr = day.toISOString().split('T')[0];
-        return appointments.filter(a => a.date === dateStr);
+        return appointmentsByDate.get(dateStr) || [];
     };
 
     const handlePrevMonth = () => {
@@ -54,6 +55,14 @@ export const ProfessionalCalendar: React.FC<ProfessionalCalendarProps> = ({ appo
         const today = new Date();
         return day.getDate() === today.getDate() && day.getMonth() === today.getMonth() && day.getFullYear() === today.getFullYear();
     }
+
+    const handleKeyDown = (e: React.KeyboardEvent, day: Date | null) => {
+        if (!day) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onDateSelect(day);
+        }
+    };
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-md">
@@ -81,8 +90,12 @@ export const ProfessionalCalendar: React.FC<ProfessionalCalendarProps> = ({ appo
                     return (
                         <div
                             key={day.toISOString()}
+                            role="button"
+                            tabIndex={isInactive ? -1 : 0}
+                            aria-label={`Ver agendamentos para ${day.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
                             onClick={() => !isInactive && onDateSelect(day)}
-                            className={`border rounded-lg h-28 p-2 text-left flex flex-col ${isInactive ? 'bg-stone-100 text-stone-400 cursor-not-allowed' : 'bg-white hover:bg-rose-50 cursor-pointer'}`}
+                            onKeyDown={(e) => !isInactive && handleKeyDown(e, day)}
+                            className={`border rounded-lg h-28 p-2 text-left flex flex-col focus:outline-none focus:ring-2 focus:ring-rose-400 ${isInactive ? 'bg-stone-100 text-stone-400 cursor-not-allowed' : 'bg-white hover:bg-rose-50 cursor-pointer'}`}
                         >
                             <span className={`font-semibold ${isToday(day) ? 'bg-rose-500 text-white rounded-full h-6 w-6 flex items-center justify-center' : ''}`}>
                                 {day.getDate()}

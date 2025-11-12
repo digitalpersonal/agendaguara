@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { User, Appointment } from '../types';
 import { supabase } from '../utils/supabase';
 import { AppointmentCard } from '../components/AppointmentCard';
@@ -23,6 +23,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     useEffect(() => {
         const fetchAppointments = async () => {
@@ -47,12 +49,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             fetchAppointments();
         }
     }, [user]);
+
+    const handleAppointmentUpdate = useCallback((updatedAppointment: Appointment) => {
+        setAppointments(currentAppointments => 
+            currentAppointments.map(appt => 
+                appt.id === updatedAppointment.id ? updatedAppointment : appt
+            )
+        );
+    }, []);
+
+    const filteredAppointments = useMemo(() => {
+        if (!startDate && !endDate) {
+            return appointments;
+        }
+        return appointments.filter(appt => {
+            const apptDate = appt.date;
+            const start = startDate || '0000-01-01';
+            const end = endDate || '9999-12-31';
+            return apptDate >= start && apptDate <= end;
+        });
+    }, [appointments, startDate, endDate]);
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const upcomingAppointments = appointments.filter(a => new Date(a.date + 'T00:00:00') >= today && a.status === 'upcoming');
-    const pastAppointments = appointments.filter(a => new Date(a.date + 'T00:00:00') < today || a.status === 'completed');
+    const upcomingAppointments = filteredAppointments.filter(a => new Date(a.date + 'T00:00:00') >= today && a.status === 'upcoming');
+    const pastAppointments = filteredAppointments.filter(a => new Date(a.date + 'T00:00:00') < today || a.status === 'completed' || a.status === 'cancelled');
+
+    const handleClearFilters = () => {
+        setStartDate('');
+        setEndDate('');
+    };
+
+    const hasActiveFilter = startDate || endDate;
 
     return (
         <div className="container mx-auto px-6 py-8">
@@ -60,46 +89,87 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 <h1 className="text-3xl md:text-4xl font-bold text-stone-800">Olá, {user.name.split(' ')[0]}!</h1>
                 <p className="text-stone-500 mt-2 text-lg">Bem-vindo(a) de volta! Aqui estão seus agendamentos.</p>
             </div>
+
+            <div className="bg-white p-4 rounded-xl shadow-md mb-8 flex flex-col sm:flex-row items-center gap-4 flex-wrap">
+                <label htmlFor="start-date" className="font-semibold text-stone-700 shrink-0">Filtrar por data:</label>
+                <div className="flex-grow flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                    <input 
+                        id="start-date"
+                        type="date" 
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="p-2 border border-stone-300 rounded-lg w-full"
+                        aria-label="Data de início"
+                    />
+                    <span className="text-stone-500 self-center">até</span>
+                     <input 
+                        id="end-date"
+                        type="date" 
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="p-2 border border-stone-300 rounded-lg w-full"
+                        aria-label="Data de fim"
+                    />
+                </div>
+                <button 
+                    onClick={handleClearFilters}
+                    className="w-full sm:w-auto bg-stone-200 text-stone-700 font-semibold py-2 px-4 rounded-lg hover:bg-stone-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!hasActiveFilter}
+                >
+                    Limpar Filtros
+                </button>
+            </div>
             
             {loading && <p>Carregando agendamentos...</p>}
             {error && <p className="text-red-500">{error}</p>}
 
             {!loading && !error && (
-                <div className="grid lg:grid-cols-1 gap-8">
-                    {/* Upcoming Appointments */}
-                    <section>
-                        <div className="flex items-center mb-4">
-                            <CalendarIcon />
-                            <h2 className="text-2xl font-bold text-stone-700">Próximos Agendamentos</h2>
+                <>
+                    {hasActiveFilter && (
+                        <div className="mb-6 text-center text-stone-600">
+                           <p>Exibindo {filteredAppointments.length} agendamento(s) para o período selecionado.</p>
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow-md">
-                            {upcomingAppointments.length > 0 ? (
-                                <div className="space-y-4">
-                                    {upcomingAppointments.map(appt => <AppointmentCard key={appt.id} appointment={appt} />)}
-                                </div>
-                            ) : (
-                                <p className="text-stone-500 text-center py-4">Você não tem nenhum agendamento futuro.</p>
-                            )}
-                        </div>
-                    </section>
-                    
-                    {/* Past Appointments */}
-                    <section>
-                        <div className="flex items-center mb-4">
-                            <ClockIcon />
-                            <h2 className="text-2xl font-bold text-stone-700">Histórico de Serviços</h2>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow-md">
-                            {pastAppointments.length > 0 ? (
-                                <div className="space-y-4">
-                                    {pastAppointments.map(appt => <AppointmentCard key={appt.id} appointment={appt} />)}
-                                </div>
-                            ) : (
-                                <p className="text-stone-500 text-center py-4">Seu histórico de agendamentos está vazio.</p>
-                            )}
-                        </div>
-                    </section>
-                </div>
+                    )}
+                    <div className="grid lg:grid-cols-1 gap-8">
+                        {/* Upcoming Appointments */}
+                        <section>
+                            <div className="flex items-center mb-4">
+                                <CalendarIcon />
+                                <h2 className="text-2xl font-bold text-stone-700">Próximos Agendamentos</h2>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-md">
+                                {upcomingAppointments.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {upcomingAppointments.map(appt => <AppointmentCard key={appt.id} appointment={appt} onUpdate={handleAppointmentUpdate} />)}
+                                    </div>
+                                ) : (
+                                    <p className="text-stone-500 text-center py-4">
+                                        {hasActiveFilter ? 'Nenhum agendamento futuro encontrado para este período.' : 'Você não tem nenhum agendamento futuro.'}
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                        
+                        {/* Past Appointments */}
+                        <section>
+                            <div className="flex items-center mb-4">
+                                <ClockIcon />
+                                <h2 className="text-2xl font-bold text-stone-700">Histórico de Serviços</h2>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-md">
+                                {pastAppointments.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {pastAppointments.map(appt => <AppointmentCard key={appt.id} appointment={appt} onUpdate={handleAppointmentUpdate} />)}
+                                    </div>
+                                ) : (
+                                     <p className="text-stone-500 text-center py-4">
+                                        {hasActiveFilter ? 'Nenhum agendamento passado encontrado para este período.' : 'Seu histórico de agendamentos está vazio.'}
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                </>
             )}
         </div>
     );
