@@ -77,7 +77,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                 setLoadingProfessionals(true);
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('id, name, specialty, imageUrl:image_url, services, settings')
+                    .select('id, name, specialties:specialty, imageUrl:image_url, services, settings')
                     .eq('role', 'professional');
 
                 if (error) {
@@ -125,6 +125,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         }
         setIsSubmitting(true);
         setError(null);
+        
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const { data: existingAppointment, error: checkError } = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('client_id', user.id)
+            .eq('professional_id', selectedProfessional.id)
+            .eq('date', dateStr)
+            .eq('status', 'upcoming');
+
+        if (checkError) {
+            console.error("Error checking for existing appointment:", checkError);
+            setError("Ocorreu um erro ao verificar sua agenda. Tente novamente.");
+            setIsSubmitting(false);
+            return;
+        }
+        
+        if (existingAppointment && existingAppointment.length > 0) {
+            setError("Você já possui um agendamento com este profissional para esta data.");
+            setIsSubmitting(false);
+            return;
+        }
+
         const appointmentData = {
             client_id: user.id,
             professional_id: selectedProfessional.id,
@@ -132,7 +155,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
             professional_name: selectedProfessional.name,
             professional_image_url: selectedProfessional.imageUrl,
             service_name: selectedService.name,
-            date: selectedDate.toISOString().split('T')[0],
+            date: dateStr,
             time: selectedTime,
             price: selectedService.price,
             status: 'upcoming' as const
@@ -185,7 +208,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                             <img src={prof.imageUrl} alt={prof.name} className="w-12 h-12 rounded-full object-cover mr-4" />
                             <div>
                                 <p className="font-semibold text-stone-800">{prof.name}</p>
-                                <p className="text-sm text-stone-500">{prof.specialty}</p>
+                                <p className="text-sm text-stone-500">{prof.specialties?.map(s => s.name).join(', ')}</p>
                             </div>
                         </div>
                     )) : <p className="text-stone-500">Nenhum profissional oferece este serviço no momento.</p>}

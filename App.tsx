@@ -42,7 +42,7 @@ const App: React.FC = () => {
             imageUrl: data.image_url || `https://i.pravatar.cc/150?u=${session.user.id}`,
             role: 'professional',
             whatsapp: data.whatsapp,
-            specialty: data.specialty || 'Especialista em Destaque',
+            specialties: data.specialty || [{ name: 'Especialista em Destaque', price: 0 }],
             services: data.services || [],
             settings: data.settings || {
               workHours: { start: '09:00', end: '18:00' },

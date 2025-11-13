@@ -26,7 +26,15 @@ const ProfessionalCard: React.FC<{ professional: Professional; onScheduleClick: 
             )}
             <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-xl font-bold text-stone-800">{professional.name}</h3>
-                <p className="text-rose-500 mb-2">{professional.specialty}</p>
+                <div className="text-rose-500 mb-2 h-12 overflow-hidden">
+                    {professional.specialties?.length > 0 ? (
+                        professional.specialties.slice(0, 2).map((s, i) => (
+                            <p key={i} className="truncate">{s.name} - R$ {s.price.toFixed(2)}</p>
+                        ))
+                    ) : (
+                        <p className="text-stone-500">Nenhuma especialidade listada.</p>
+                    )}
+                </div>
                 <div className="flex items-center text-amber-400 mb-4">
                     <StarIcon className="w-5 h-5" />
                     <span className="text-stone-600 font-semibold ml-1">{professional.rating?.toFixed(1) || 'N/A'}</span>
@@ -55,7 +63,7 @@ export const FeaturedProfessionals: React.FC<FeaturedProfessionalsProps> = ({ on
             setLoading(true);
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, name, specialty, imageUrl:image_url, services, settings')
+                .select('id, name, specialties:specialty, imageUrl:image_url, services, settings')
                 .eq('role', 'professional')
                 .limit(4);
 

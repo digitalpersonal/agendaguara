@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import type { ProfessionalUser, Appointment, Service } from '../types';
+import type { ProfessionalUser, Appointment, Service, Specialty } from '../types';
 import { supabase, getInitials, getColor } from '../utils/supabase';
 import { ProfessionalCalendar } from '../components/ProfessionalCalendar';
 import { QuickBookModal } from '../components/QuickBookModal';
@@ -9,7 +9,7 @@ interface ProfessionalDashboardProps {
     onProfileUpdate: (updatedFields: Partial<ProfessionalUser>) => void;
 }
 
-// Icons for UI
+// Icons
 const CalendarIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
 );
@@ -210,6 +210,7 @@ const ServiceEditor: React.FC<{ services: Service[]; userId: string; onServicesU
     const [newServiceName, setNewServiceName] = useState('');
     const [newServicePrice, setNewServicePrice] = useState('');
     const [newServiceDuration, setNewServiceDuration] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleServiceChange = (index: number, field: keyof Service, value: any) => {
         const updatedServices = [...localServices];
@@ -246,11 +247,13 @@ const ServiceEditor: React.FC<{ services: Service[]; userId: string; onServicesU
     };
 
     const handleSaveChanges = async () => {
+        setIsSaving(true);
         const { error } = await supabase
             .from('profiles')
             .update({ services: localServices })
             .eq('id', userId);
         
+        setIsSaving(false);
         if (error) {
             alert("Erro ao salvar alterações.");
             console.error(error);
@@ -263,44 +266,69 @@ const ServiceEditor: React.FC<{ services: Service[]; userId: string; onServicesU
     return (
         <div className="bg-white p-6 rounded-xl shadow-md">
             <h3 className="text-2xl font-bold text-stone-800 mb-4">Meus Serviços</h3>
-            <div className="space-y-4">
-                {localServices.map((service, index) => (
-                    <div key={service.id} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center p-3 border rounded-lg">
-                        <input type="text" value={service.name} onChange={(e) => handleServiceChange(index, 'name', e.target.value)} className="p-2 border rounded" placeholder="Nome do Serviço" />
-                        <input type="number" value={service.price} onChange={(e) => handleServiceChange(index, 'price', e.target.value)} className="p-2 border rounded" placeholder="Preço" />
-                        <input type="number" value={service.duration} onChange={(e) => handleServiceChange(index, 'duration', e.target.value)} className="p-2 border rounded" placeholder="Duração (min)" />
-                        <button onClick={() => handleRemoveService(index)} className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 flex justify-center items-center" aria-label="Remover serviço">
-                            <TrashIcon />
-                        </button>
-                    </div>
-                ))}
-            </div>
+            
+            {localServices.length === 0 ? (
+                <div className="text-center bg-stone-50 p-6 rounded-lg mb-6 border border-stone-200">
+                    <p className="text-stone-600 font-medium">Você ainda não cadastrou nenhum serviço.</p>
+                    <p className="text-stone-500 text-sm mt-1">Use o formulário abaixo para adicionar seu primeiro serviço e começar a receber agendamentos.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {localServices.map((service, index) => (
+                        <div key={service.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg bg-stone-50">
+                            <div className="md:col-span-2">
+                                <label className="text-xs font-medium text-stone-500">Nome do Serviço</label>
+                                <input type="text" value={service.name} onChange={(e) => handleServiceChange(index, 'name', e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Nome do Serviço" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-stone-500">Preço (R$)</label>
+                                <input type="number" value={service.price} onChange={(e) => handleServiceChange(index, 'price', e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Preço" />
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <div className="flex-grow">
+                                    <label className="text-xs font-medium text-stone-500">Duração (min)</label>
+                                    <input type="number" value={service.duration} onChange={(e) => handleServiceChange(index, 'duration', e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Duração" />
+                                </div>
+                                <button onClick={() => handleRemoveService(index)} className="h-10 text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 flex justify-center items-center" aria-label="Remover serviço">
+                                    <TrashIcon />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
 
             <div className="mt-8 border-t pt-6">
                 <h4 className="text-xl font-bold text-stone-700 mb-3">Adicionar Novo Serviço</h4>
-                <form onSubmit={handleAddNewService} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                     <div className="col-span-1">
+                <form onSubmit={handleAddNewService} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 bg-stone-50 border rounded-lg">
+                     <div className="md:col-span-2">
                         <label htmlFor="new-service-name" className="text-sm font-medium text-stone-600">Nome do Serviço</label>
-                        <input id="new-service-name" type="text" value={newServiceName} onChange={(e) => setNewServiceName(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="Ex: Corte Moderno" />
+                        <input id="new-service-name" type="text" value={newServiceName} onChange={(e) => setNewServiceName(e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Ex: Corte Moderno" />
                     </div>
                     <div>
                         <label htmlFor="new-service-price" className="text-sm font-medium text-stone-600">Preço (R$)</label>
-                        <input id="new-service-price" type="number" value={newServicePrice} onChange={(e) => setNewServicePrice(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="Ex: 50" />
+                        <input id="new-service-price" type="number" value={newServicePrice} onChange={(e) => setNewServicePrice(e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Ex: 50" />
                     </div>
-                    <div className="flex gap-2 items-end">
-                        <div className="flex-grow">
+                    <div className="flex items-end gap-2">
+                         <div className="flex-grow">
                              <label htmlFor="new-service-duration" className="text-sm font-medium text-stone-600">Duração (min)</label>
-                            <input id="new-service-duration" type="number" value={newServiceDuration} onChange={(e) => setNewServiceDuration(e.target.value)} className="mt-1 w-full p-2 border rounded" placeholder="Ex: 60" />
+                            <input id="new-service-duration" type="number" value={newServiceDuration} onChange={(e) => setNewServiceDuration(e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Ex: 60" />
                         </div>
                         <button type="submit" className="h-10 bg-stone-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-stone-800 transition-colors">Adicionar</button>
                     </div>
                 </form>
             </div>
 
-            <button onClick={handleSaveChanges} className="mt-8 bg-rose-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-rose-600 transition-colors">Salvar Alterações</button>
+            <div className="mt-8 pt-6 border-t flex justify-end">
+                <button onClick={handleSaveChanges} disabled={isSaving} className="bg-rose-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isSaving ? 'Salvando...' : 'Salvar Alterações nos Serviços'}
+                </button>
+            </div>
         </div>
-    )
+    );
 };
+
 
 const AvailabilityManager: React.FC<{ 
     user: ProfessionalUser,
@@ -465,14 +493,38 @@ const ProfileSettings: React.FC<{
     const [previewUrl, setPreviewUrl] = useState<string>(user.imageUrl);
     const [profileData, setProfileData] = useState({
         name: user.name,
-        specialty: user.specialty,
+        specialties: user.specialties || [],
         whatsapp: user.whatsapp || '',
     });
+    const [newSpecialtyName, setNewSpecialtyName] = useState('');
+    const [newSpecialtyPrice, setNewSpecialtyPrice] = useState('');
+
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setProfileData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleAddSpecialty = () => {
+        if (newSpecialtyName.trim() && newSpecialtyPrice) {
+            setProfileData(prev => ({
+                ...prev,
+                specialties: [...prev.specialties, { name: newSpecialtyName.trim(), price: Number(newSpecialtyPrice) }]
+            }));
+            setNewSpecialtyName('');
+            setNewSpecialtyPrice('');
+        } else {
+             alert('Por favor, preencha o nome e o preço da especialidade.');
+        }
+    };
+    
+    const removeSpecialty = (indexToRemove: number) => {
+        setProfileData(prev => ({
+            ...prev,
+            specialties: prev.specialties.filter((_, index) => index !== indexToRemove)
+        }));
+    };
+
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -532,6 +584,12 @@ const ProfileSettings: React.FC<{
     
     const handleProfileDetailsSave = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (profileData.specialties.length === 0) {
+            alert('Por favor, adicione ao menos uma especialidade.');
+            return;
+        }
+
         setIsSaving(true);
         
         // First, handle photo upload if a new one is selected
@@ -544,7 +602,7 @@ const ProfileSettings: React.FC<{
             .from('profiles')
             .update({
                 name: profileData.name,
-                specialty: profileData.specialty,
+                specialty: profileData.specialties,
                 whatsapp: profileData.whatsapp,
             })
             .eq('id', user.id);
@@ -590,9 +648,38 @@ const ProfileSettings: React.FC<{
                                 <label htmlFor="name" className="block text-sm font-medium text-stone-600 mb-1">Nome Completo</label>
                                 <input id="name" name="name" type="text" value={profileData.name} onChange={handleInputChange} className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300" />
                             </div>
-                            <div>
-                                <label htmlFor="specialty" className="block text-sm font-medium text-stone-600 mb-1">Especialidade</label>
-                                <input id="specialty" name="specialty" type="text" value={profileData.specialty} onChange={handleInputChange} className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300" placeholder="Ex: Cabeleireiro, Fisioterapeuta" />
+                           <div>
+                                <label className="block text-sm font-medium text-stone-600 mb-1">Especialidades</label>
+                                <div className="border rounded-lg p-2 space-y-2">
+                                    {profileData.specialties.map((spec, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-stone-100 p-2 rounded-lg text-sm">
+                                            <span>{spec.name} - R$ {spec.price.toFixed(2)}</span>
+                                            <button type="button" onClick={() => removeSpecialty(index)} className="ml-2 text-red-500 hover:text-red-700 font-bold">&times;</button>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-end gap-2 border-t pt-2">
+                                        <div className="flex-grow">
+                                            <input 
+                                                type="text" 
+                                                value={newSpecialtyName} 
+                                                onChange={e => setNewSpecialtyName(e.target.value)}
+                                                className="w-full px-2 py-1 border rounded-lg text-sm"
+                                                placeholder="Nome da Especialidade"
+                                            />
+                                        </div>
+                                        <div className="w-24">
+                                            <input 
+                                                type="number" 
+                                                value={newSpecialtyPrice} 
+                                                onChange={e => setNewSpecialtyPrice(e.target.value)}
+                                                className="w-full px-2 py-1 border rounded-lg text-sm"
+                                                placeholder="Preço"
+                                                step="0.01"
+                                            />
+                                        </div>
+                                        <button type="button" onClick={handleAddSpecialty} className="h-9 bg-stone-700 text-white font-semibold px-3 rounded-lg hover:bg-stone-800 text-sm">Add</button>
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label htmlFor="whatsapp" className="block text-sm font-medium text-stone-600 mb-1">WhatsApp</label>

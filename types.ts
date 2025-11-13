@@ -5,14 +5,20 @@ export interface Service {
   price: number;
 }
 
+export interface Specialty {
+  name: string;
+  price: number;
+}
+
 export interface Professional {
   id: string;
   name: string;
-  specialty: string;
+  specialties: Specialty[];
   rating?: number;
   imageUrl: string;
   services: Service[];
   settings?: ProfessionalSettings;
+  bio?: string;
 }
 
 export interface Testimonial {
@@ -50,9 +56,10 @@ export interface ProfessionalSettings {
 
 export interface ProfessionalUser extends User {
   role: 'professional';
-  specialty: string;
+  specialties: Specialty[];
   services: Service[];
   settings: ProfessionalSettings;
+  bio?: string;
 }
 
 export interface AdminUser extends User {

@@ -87,10 +87,12 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({ user, appointmen
 
         setIsSubmitting(true);
 
+        const trimmedClientName = clientName.trim();
+        
         const appointmentData = {
             // client_id is null because we are not creating a user account
             professional_id: user.id,
-            client_name: clientName,
+            client_name: trimmedClientName,
             professional_name: user.name,
             professional_image_url: user.imageUrl,
             service_name: selectedService.name,
