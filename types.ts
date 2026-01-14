@@ -1,3 +1,4 @@
+
 export interface Service {
   id: string;
   name: string;
@@ -16,6 +17,7 @@ export interface Professional {
   specialties: Specialty[];
   rating?: number;
   imageUrl: string;
+  coverImageUrl?: string; // Novo campo
   services: Service[];
   settings?: ProfessionalSettings;
   bio?: string;
@@ -29,7 +31,6 @@ export interface Testimonial {
   imageUrl: string;
 }
 
-// FIX: Add Plan interface to be used by PricingPlans component.
 export interface Plan {
   id:string;
   name: string;
@@ -60,6 +61,7 @@ export interface ProfessionalUser extends User {
   services: Service[];
   settings: ProfessionalSettings;
   bio?: string;
+  coverImageUrl?: string; // Novo campo
 }
 
 export interface AdminUser extends User {
@@ -69,6 +71,7 @@ export interface AdminUser extends User {
 export interface Appointment {
   id: string;
   service_name: string;
+  professional_id: string; // Added to help filter financials
   professional_name: string;
   professional_image_url: string;
   client_name: string;
@@ -79,4 +82,12 @@ export interface Appointment {
   pet_name?: string;
   pet_breed?: string;
   notes?: string;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  category: string;
 }

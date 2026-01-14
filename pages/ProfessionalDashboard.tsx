@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import type { ProfessionalUser, Appointment, Service, Specialty } from '../types';
+import type { ProfessionalUser, Appointment, Service, Specialty, Expense } from '../types';
 import { supabase, getInitials, getColor } from '../utils/supabase';
 import { ProfessionalCalendar } from '../components/ProfessionalCalendar';
 import { QuickBookModal } from '../components/QuickBookModal';
@@ -17,7 +18,7 @@ const CogIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
 );
 const ClipboardListIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
 );
 const UserIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -27,77 +28,40 @@ const ArchiveIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
     </svg>
 );
-const DogIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-stone-500 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 5.2a2 2 0 0 1 2-2.2h.4a2 2 0 0 1 2 2.2v.3a2 2 0 0 1-2 2.2h-.4a2 2 0 0 1-2-2.2v-.3Z"></path><path d="M9.5 14.5A2.5 2.5 0 0 1 7 12V9a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3a2.5 2.5 0 0 1-2.5 2.5h-3Z"></path><path d="M11 14v3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-3"></path><path d="M10 14h.01"></path><path d="M14 14h.01"></path><path d="M7 17v-2.3a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2V17"></path><path d="M5 14a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1"></path><path d="M19 14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1"></path></svg>
+const TrendingUpIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+);
 const PlusCircleIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 );
-const BlockedIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-    </svg>
+const ListIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
 );
-const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
+const ClockIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 );
-
-
-const AppointmentNoteEditor: React.FC<{
-    appointment: Appointment;
-    onUpdate: (updatedAppointment: Appointment) => void;
-}> = ({ appointment, onUpdate }) => {
-    const [notes, setNotes] = useState(appointment.notes || '');
-    const [isSaving, setIsSaving] = useState(false);
-    
-    const handleSave = async () => {
-        if (notes === (appointment.notes || '')) return;
-        setIsSaving(true);
-        const { data, error } = await supabase
-            .from('appointments')
-            .update({ notes })
-            .eq('id', appointment.id)
-            .select()
-            .single();
-
-        if (error) {
-            alert('Erro ao salvar anotação.');
-            console.error(error);
-        } else if (data) {
-            onUpdate(data);
-        }
-        setIsSaving(false);
-    };
-
-    return (
-        <div className="mt-3 border-t pt-3">
-            <label className="text-xs font-semibold text-stone-600">Anotações</label>
-            <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Adicionar anotações sobre o cliente ou serviço..."
-                className="w-full p-2 border border-stone-200 rounded-md text-sm mt-1 focus:ring-1 focus:ring-rose-400 focus:outline-none"
-                rows={2}
-            />
-            <button
-                onClick={handleSave}
-                disabled={isSaving || notes === (appointment.notes || '')}
-                className="mt-1 text-xs bg-stone-200 text-stone-700 font-semibold py-1 px-3 rounded-md hover:bg-stone-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-                {isSaving ? 'Salvando...' : 'Salvar Anotação'}
-            </button>
-        </div>
-    );
-};
+const CameraIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+);
+const ChevronDownIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+);
+const BellIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+);
 
 const DayDetailPanel: React.FC<{
     selectedDate: Date;
     appointments: Appointment[];
     settings: ProfessionalUser['settings'];
     onClose: () => void;
+    onAddClick: () => void;
     onAppointmentUpdate: (updatedAppointment: Appointment) => void;
-}> = ({ selectedDate, appointments, settings, onClose, onAppointmentUpdate }) => {
+}> = ({ selectedDate, appointments, settings, onClose, onAddClick, onAppointmentUpdate }) => {
     
+    const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
     const handleUpdateStatus = async (appointmentId: string, status: 'completed' | 'cancelled') => {
@@ -113,7 +77,6 @@ const DayDetailPanel: React.FC<{
 
         if (error) {
             alert(`Erro ao ${status === 'completed' ? 'finalizar' : 'cancelar'} o agendamento.`);
-            console.error(error);
         } else if (data) {
             onAppointmentUpdate(data);
         }
@@ -133,662 +96,545 @@ const DayDetailPanel: React.FC<{
     }, [settings.workHours]);
 
     const getAppointmentForSlot = (time: string) => {
-        return appointments.find(a => a.time.startsWith(time.substring(0, 5))); // Match HH:MM
+        return appointments.find(a => a.time.startsWith(time.substring(0, 5)));
+    };
+
+    const sortedAppointments = useMemo(() => {
+        return [...appointments].sort((a, b) => a.time.localeCompare(b.time));
+    }, [appointments]);
+
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case 'completed': return 'bg-green-100 text-green-700 border-green-200';
+            case 'cancelled': return 'bg-stone-100 text-stone-500 border-stone-200';
+            default: return 'bg-rose-100 text-rose-700 border-rose-200';
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'completed': return 'Concluído';
+            case 'cancelled': return 'Cancelado';
+            default: return 'Agendado';
+        }
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-lg border w-full lg:w-1/3 animate-fade-in-right">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-stone-800">
-                    {selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </h3>
-                <button onClick={onClose} aria-label="Fechar painel de detalhes do dia" className="text-stone-500 hover:text-stone-800 p-1 rounded-full hover:bg-stone-100 transition-colors text-2xl font-bold leading-none">&times;</button>
+        <div className="bg-white p-6 rounded-xl shadow-lg border w-full lg:w-1/3 animate-fade-in-right flex flex-col h-full max-h-[85vh]">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h3 className="text-xl font-bold text-stone-800">
+                        {selectedDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}
+                    </h3>
+                    <p className="text-stone-500 text-sm capitalize">
+                        {selectedDate.toLocaleDateString('pt-BR', { weekday: 'long' })}
+                    </p>
+                </div>
+                <button onClick={onClose} className="text-stone-400 hover:text-stone-800 text-2xl font-bold p-2">&times;</button>
             </div>
-            <div className="bg-stone-50 p-3 rounded-lg text-center mb-4">
-                <p className="font-semibold text-stone-700">
-                    {appointments.length > 0
-                        ? `Você tem ${appointments.length} agendamento(s) para este dia.`
-                        : "Nenhum agendamento para este dia."}
-                </p>
+            
+            <div className="flex flex-col gap-4 mb-6">
+                 <button 
+                    onClick={onAddClick}
+                    className="w-full bg-rose-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 flex items-center justify-center text-sm"
+                >
+                    <PlusCircleIcon /> Novo Agendamento
+                </button>
+
+                <div className="flex p-1 bg-stone-100 rounded-xl">
+                    <button 
+                        onClick={() => setViewMode('list')}
+                        className={`flex-1 flex items-center justify-center py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                    >
+                        <ListIcon /> Lista
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('timeline')}
+                        className={`flex-1 flex items-center justify-center py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'timeline' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                    >
+                        <ClockIcon /> Timeline
+                    </button>
+                </div>
             </div>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                {timeSlots.map(time => {
-                    const appointment = getAppointmentForSlot(time);
-                    const isBlocked = settings.blockedTimeSlots && settings.blockedTimeSlots[selectedDate.toISOString().split('T')[0]]?.includes(time);
-                    
-                    if (appointment) {
-                        return (
-                             <div key={time} className="bg-rose-50 border-l-4 border-rose-500 p-3 rounded-r-lg">
-                                <p className="font-semibold text-rose-800">{time} - {appointment.service_name}</p>
-                                <p className="text-sm text-rose-700">Cliente: {appointment.client_name}</p>
-                                {appointment.pet_name && (
-                                    <p className="text-sm text-rose-600 flex items-center"><DogIcon /> {appointment.pet_name} ({appointment.pet_breed})</p>
-                                )}
-                                <AppointmentNoteEditor appointment={appointment} onUpdate={onAppointmentUpdate} />
-                                {appointment.status === 'upcoming' && (
-                                    <div className="flex gap-2 mt-2 border-t pt-2">
+
+            <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                {viewMode === 'list' ? (
+                    <div className="space-y-4">
+                        {sortedAppointments.length > 0 ? sortedAppointments.map(appt => (
+                            <div key={appt.id} className="bg-stone-50 border border-stone-200 p-4 rounded-xl relative transition-all hover:border-rose-200">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-sm font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-md">{appt.time}</span>
+                                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${getStatusStyle(appt.status)}`}>
+                                        {getStatusLabel(appt.status)}
+                                    </span>
+                                </div>
+                                <h4 className="font-bold text-stone-800">{appt.service_name}</h4>
+                                <p className="text-xs text-stone-500 mt-1 mb-3">Cliente: <span className="font-semibold text-stone-700">{appt.client_name}</span></p>
+                                
+                                {appt.status === 'upcoming' && (
+                                    <div className="flex gap-2 border-t border-stone-200 pt-3">
                                         <button
-                                            onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}
-                                            disabled={loadingAction === appointment.id}
-                                            className="text-xs font-semibold py-1 px-3 rounded-md bg-stone-200 text-stone-700 hover:bg-stone-300 transition-colors disabled:opacity-50"
+                                            onClick={() => handleUpdateStatus(appt.id, 'cancelled')}
+                                            disabled={loadingAction === appt.id}
+                                            className="flex-1 text-[10px] font-bold py-2 rounded-lg bg-white border border-stone-200 text-stone-600 hover:bg-stone-100 transition-colors"
                                         >
                                             Cancelar
                                         </button>
                                         <button
-                                            onClick={() => handleUpdateStatus(appointment.id, 'completed')}
-                                            disabled={loadingAction === appointment.id}
-                                            className="text-xs font-semibold py-1 px-3 rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
+                                            onClick={() => handleUpdateStatus(appt.id, 'completed')}
+                                            disabled={loadingAction === appt.id}
+                                            className="flex-1 text-[10px] font-bold py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors shadow-sm"
                                         >
-                                            Finalizar
+                                            Concluir
                                         </button>
                                     </div>
                                 )}
                             </div>
-                        )
-                    }
-                    if (isBlocked) {
-                         return (
-                            <div key={time} className="bg-stone-100 border-l-4 border-stone-300 p-3 rounded-r-lg flex items-center">
-                                <BlockedIcon />
-                                <span className="text-stone-500 line-through">{time} - Horário Bloqueado</span>
-                            </div>
-                        )
-                    }
-                    return (
-                        <div key={time} className="flex justify-between items-center bg-white p-3 rounded-lg hover:bg-stone-50">
-                            <span className="text-stone-600">{time} - Disponível</span>
-                        </div>
-                    )
-                })}
-            </div>
-        </div>
-    );
-};
-
-const ServiceEditor: React.FC<{ services: Service[]; userId: string; onServicesUpdate: (services: Service[]) => void; }> = ({ services, userId, onServicesUpdate }) => {
-    const [localServices, setLocalServices] = useState(services || []);
-    const [newServiceName, setNewServiceName] = useState('');
-    const [newServicePrice, setNewServicePrice] = useState('');
-    const [newServiceDuration, setNewServiceDuration] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-
-    const handleServiceChange = (index: number, field: keyof Service, value: any) => {
-        const updatedServices = [...localServices];
-        (updatedServices[index] as any)[field] = field === 'price' || field === 'duration' ? Number(value) : value;
-        setLocalServices(updatedServices);
-    };
-
-    const handleRemoveService = (indexToRemove: number) => {
-        if (window.confirm('Tem certeza que deseja remover este serviço? Esta ação não pode ser desfeita.')) {
-            setLocalServices(prev => prev.filter((_, index) => index !== indexToRemove));
-        }
-    };
-
-    const handleAddNewService = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newServiceName || !newServicePrice || !newServiceDuration) {
-            alert("Por favor, preencha todos os campos do novo serviço.");
-            return;
-        }
-
-        const newService: Service = {
-            id: crypto.randomUUID(),
-            name: newServiceName,
-            price: Number(newServicePrice),
-            duration: Number(newServiceDuration),
-        };
-
-        setLocalServices([...localServices, newService]);
-
-        // Reset form fields
-        setNewServiceName('');
-        setNewServicePrice('');
-        setNewServiceDuration('');
-    };
-
-    const handleSaveChanges = async () => {
-        setIsSaving(true);
-        const { error } = await supabase
-            .from('profiles')
-            .update({ services: localServices })
-            .eq('id', userId);
-        
-        setIsSaving(false);
-        if (error) {
-            alert("Erro ao salvar alterações.");
-            console.error(error);
-        } else {
-            alert("Serviços atualizados com sucesso!");
-            onServicesUpdate(localServices);
-        }
-    };
-    
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-2xl font-bold text-stone-800 mb-4">Meus Serviços</h3>
-            
-            {localServices.length === 0 ? (
-                <div className="text-center bg-stone-50 p-6 rounded-lg mb-6 border border-stone-200">
-                    <p className="text-stone-600 font-medium">Você ainda não cadastrou nenhum serviço.</p>
-                    <p className="text-stone-500 text-sm mt-1">Use o formulário abaixo para adicionar seu primeiro serviço e começar a receber agendamentos.</p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {localServices.map((service, index) => (
-                        <div key={service.id || index} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg bg-stone-50">
-                            <div className="md:col-span-2">
-                                <label className="text-xs font-medium text-stone-500">Nome do Serviço</label>
-                                <input type="text" value={service.name} onChange={(e) => handleServiceChange(index, 'name', e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Nome do Serviço" />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-stone-500">Preço (R$)</label>
-                                <input type="number" value={service.price} onChange={(e) => handleServiceChange(index, 'price', e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Preço" />
-                            </div>
-                            <div className="flex items-end gap-2">
-                                <div className="flex-grow">
-                                    <label className="text-xs font-medium text-stone-500">Duração (min)</label>
-                                    <input type="number" value={service.duration} onChange={(e) => handleServiceChange(index, 'duration', e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Duração" />
+                        )) : (
+                            <div className="text-center py-10">
+                                <div className="bg-stone-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                    <CalendarIcon />
                                 </div>
-                                <button onClick={() => handleRemoveService(index)} className="h-10 text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 flex justify-center items-center" aria-label="Remover serviço">
-                                    <TrashIcon />
-                                </button>
+                                <p className="text-stone-500 font-medium">Nenhum atendimento agendado para hoje.</p>
+                                <p className="text-stone-400 text-xs mt-1">Dia livre para organizar as finanças!</p>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-
-            <div className="mt-8 border-t pt-6">
-                <h4 className="text-xl font-bold text-stone-700 mb-3">Adicionar Novo Serviço</h4>
-                <form onSubmit={handleAddNewService} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 bg-stone-50 border rounded-lg">
-                     <div className="md:col-span-2">
-                        <label htmlFor="new-service-name" className="text-sm font-medium text-stone-600">Nome do Serviço</label>
-                        <input id="new-service-name" type="text" value={newServiceName} onChange={(e) => setNewServiceName(e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Ex: Corte Moderno" />
+                        )}
                     </div>
-                    <div>
-                        <label htmlFor="new-service-price" className="text-sm font-medium text-stone-600">Preço (R$)</label>
-                        <input id="new-service-price" type="number" value={newServicePrice} onChange={(e) => setNewServicePrice(e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Ex: 50" />
-                    </div>
-                    <div className="flex items-end gap-2">
-                         <div className="flex-grow">
-                             <label htmlFor="new-service-duration" className="text-sm font-medium text-stone-600">Duração (min)</label>
-                            <input id="new-service-duration" type="number" value={newServiceDuration} onChange={(e) => setNewServiceDuration(e.target.value)} className="mt-1 w-full p-2 border rounded-md border-stone-300" placeholder="Ex: 60" />
-                        </div>
-                        <button type="submit" className="h-10 bg-stone-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-stone-800 transition-colors">Adicionar</button>
-                    </div>
-                </form>
-            </div>
-
-            <div className="mt-8 pt-6 border-t flex justify-end">
-                <button onClick={handleSaveChanges} disabled={isSaving} className="bg-rose-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    {isSaving ? 'Salvando...' : 'Salvar Alterações nos Serviços'}
-                </button>
-            </div>
-        </div>
-    );
-};
-
-
-const AvailabilityManager: React.FC<{ 
-    user: ProfessionalUser,
-    appointmentsByDate: Map<string, Appointment[]>,
-    onSettingsUpdate: (settings: ProfessionalUser['settings']) => void;
-}> = ({ user, appointmentsByDate, onSettingsUpdate }) => {
-    const [localSettings, setLocalSettings] = useState<ProfessionalUser['settings']>(user.settings);
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-
-    const isToday = (day: Date) => {
-        const today = new Date();
-        return day.getDate() === today.getDate() && day.getMonth() === today.getMonth() && day.getFullYear() === today.getFullYear();
-    }
-    
-    // Calendar logic
-    const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-    const daysInMonth = lastDayOfMonth.getDate();
-    const startingDay = firstDayOfMonth.getDay();
-
-    const calendarDays = useMemo(() => {
-        const days = [];
-        for (let i = 0; i < startingDay; i++) { days.push(null); }
-        for (let i = 1; i <= daysInMonth; i++) { days.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i)); }
-        return days;
-    }, [currentMonth, daysInMonth, startingDay]);
-    
-    // Time slots for selected day
-    const timeSlots = useMemo(() => {
-        const slots = [];
-        const { workHours } = localSettings;
-        if (!workHours) return [];
-        const start = parseInt(workHours.start.split(':')[0]);
-        const end = parseInt(workHours.end.split(':')[0]);
-        for (let i = start; i < end; i++) {
-            slots.push(`${String(i).padStart(2, '0')}:00`);
-            slots.push(`${String(i).padStart(2, '0')}:30`);
-        }
-        return slots;
-    }, [localSettings.workHours]);
-
-    const getAppointmentForSlot = (time: string) => {
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        const appointmentsForDay = appointmentsByDate.get(dateStr) || [];
-        return appointmentsForDay.find(a => a.time.startsWith(time.substring(0, 5)));
-    };
-
-    // Handlers
-    const toggleBlockDay = (day: Date) => {
-        const dateStr = day.toISOString().split('T')[0];
-        const newBlockedDays = localSettings.blockedDays.includes(dateStr)
-            ? localSettings.blockedDays.filter(d => d !== dateStr)
-            : [...localSettings.blockedDays, dateStr];
-        setLocalSettings({ ...localSettings, blockedDays: newBlockedDays });
-    };
-
-    const toggleBlockTimeSlot = (time: string) => {
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        const blockedSlotsForDay = localSettings.blockedTimeSlots?.[dateStr] || [];
-        const isBlocked = blockedSlotsForDay.includes(time);
-        
-        const newBlockedSlotsForDay = isBlocked
-            ? blockedSlotsForDay.filter(t => t !== time)
-            : [...blockedSlotsForDay, time];
-
-        setLocalSettings({
-            ...localSettings,
-            blockedTimeSlots: {
-                ...localSettings.blockedTimeSlots,
-                [dateStr]: newBlockedSlotsForDay
-            }
-        });
-    };
-    
-     const handleSaveChanges = async () => {
-        const { error } = await supabase
-            .from('profiles')
-            .update({ settings: localSettings })
-            .eq('id', user.id);
-        
-        if (error) {
-            alert("Erro ao salvar alterações.");
-            console.error(error);
-        } else {
-            alert("Disponibilidade atualizada com sucesso!");
-            onSettingsUpdate(localSettings);
-        }
-    };
-
-    const isDayBlocked = localSettings.blockedDays.includes(selectedDate.toISOString().split('T')[0]);
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-2xl font-bold text-stone-800 mb-4">Gerenciar Disponibilidade</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Calendar View */}
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 rounded-full hover:bg-stone-100">&lt;</button>
-                        <h2 className="text-xl font-bold text-stone-800">{currentMonth.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}</h2>
-                        <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 rounded-full hover:bg-stone-100">&gt;</button>
-                    </div>
-                    <div className="grid grid-cols-7 gap-1 text-center text-sm font-semibold text-stone-500 mb-2">
-                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => <div key={day}>{day}</div>)}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1">
-                        {calendarDays.map((day, index) => {
-                            if (!day) return <div key={`empty-${index}`} className="border rounded-lg h-20"></div>;
-                            const dateStr = day.toISOString().split('T')[0];
-                            const isBlocked = localSettings.blockedDays.includes(dateStr);
-                            const isSelected = day.toDateString() === selectedDate.toDateString();
-                            return (
-                                <div key={dateStr} onClick={() => setSelectedDate(day)} className={`border rounded-lg h-20 p-2 text-left cursor-pointer ${isSelected ? 'bg-rose-500 text-white' : isBlocked ? 'bg-stone-200 text-stone-500' : 'bg-white hover:bg-rose-50'}`}>
-                                    <span className={`font-semibold ${isToday(day) && !isSelected ? 'text-rose-500' : ''}`}>{day.getDate()}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-                {/* Time Slot View for Selected Day */}
-                <div>
-                    <h4 className="text-xl font-bold text-stone-700 mb-3">{selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</h4>
-                     <button onClick={() => toggleBlockDay(selectedDate)} className={`w-full py-2 px-4 rounded-lg transition-colors mb-4 ${isDayBlocked ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {isDayBlocked ? 'Desbloquear este dia' : 'Bloquear dia inteiro'}
-                    </button>
-                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-                         {isDayBlocked ? (
-                            <p className="text-center text-stone-500 p-4 bg-stone-50 rounded-lg">Este dia está bloqueado.</p>
-                        ) : timeSlots.map(time => {
+                ) : (
+                    <div className="space-y-3">
+                        {timeSlots.map(time => {
                             const appointment = getAppointmentForSlot(time);
-                            const isBlocked = localSettings.blockedTimeSlots?.[selectedDate.toISOString().split('T')[0]]?.includes(time);
-
+                            const isBlocked = settings.blockedTimeSlots && settings.blockedTimeSlots[selectedDate.toISOString().split('T')[0]]?.includes(time);
+                            
                             if (appointment) {
-                                return <div key={time} className="p-2 rounded bg-rose-50 text-rose-700"><strong>{time}</strong> - Agendado com {appointment.client_name}</div>
+                                return (
+                                     <div key={time} className="bg-rose-50 border-l-4 border-rose-500 p-3 rounded-r-lg">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="font-bold text-rose-800 text-xs">{time}</p>
+                                            <span className={`text-[8px] font-bold uppercase px-1 rounded border ${getStatusStyle(appointment.status)}`}>
+                                                {getStatusLabel(appointment.status)}
+                                            </span>
+                                        </div>
+                                        <p className="font-bold text-stone-800 text-sm">{appointment.service_name}</p>
+                                        <p className="text-[10px] text-stone-600">{appointment.client_name}</p>
+                                    </div>
+                                )
                             }
-
+                            if (isBlocked) {
+                                 return (
+                                    <div key={time} className="bg-stone-100 border-l-4 border-stone-300 p-3 rounded-r-lg flex items-center">
+                                        <span className="text-stone-400 line-through text-[10px] font-medium">{time} - Bloqueado</span>
+                                    </div>
+                                )
+                            }
                             return (
-                                <div key={time} className="flex justify-between items-center p-2 rounded bg-white hover:bg-stone-50">
-                                    <span className={isBlocked ? 'text-stone-400 line-through' : 'text-stone-700'}>{time}</span>
-                                    <button onClick={() => toggleBlockTimeSlot(time)} className={`text-xs font-semibold py-1 px-2 rounded ${isBlocked ? 'bg-stone-200 text-stone-600' : 'bg-stone-100 text-stone-500'}`}>
-                                        {isBlocked ? 'Desbloquear' : 'Bloquear'}
-                                    </button>
+                                <div key={time} className="flex justify-between items-center bg-white p-2 border border-stone-100 border-dashed rounded-lg">
+                                    <span className="text-stone-400 text-[10px] font-medium">{time} - Disponível</span>
                                 </div>
                             )
                         })}
                     </div>
-                </div>
+                )}
             </div>
-            <button onClick={handleSaveChanges} className="mt-8 bg-rose-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-rose-600 transition-colors">Salvar Alterações</button>
         </div>
     );
 };
 
-const ProfileSettings: React.FC<{
-    user: ProfessionalUser;
-    onProfileUpdate: (updatedFields: Partial<ProfessionalUser>) => void;
-}> = ({ user, onProfileUpdate }) => {
-    const [uploading, setUploading] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string>(user.imageUrl);
-    const [profileData, setProfileData] = useState({
-        name: user.name,
-        specialties: user.specialties || [],
-        whatsapp: user.whatsapp || '',
-    });
-    const [newSpecialtyName, setNewSpecialtyName] = useState('');
-    const [newSpecialtyPrice, setNewSpecialtyPrice] = useState('');
+const ProfessionalNotifications: React.FC<{ appointments: Appointment[] }> = ({ appointments }) => {
+    const [todayStr, setTodayStr] = useState('');
 
+    useEffect(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        setTodayStr(`${year}-${month}-${day}`);
+    }, []);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setProfileData(prev => ({ ...prev, [name]: value }));
-    };
+    const todayAppointments = useMemo(() => {
+        if (!todayStr) return [];
+        return appointments
+            .filter(a => a.date === todayStr && a.status === 'upcoming')
+            .sort((a, b) => a.time.localeCompare(b.time));
+    }, [appointments, todayStr]);
 
-    const handleAddSpecialty = () => {
-        if (newSpecialtyName.trim() && newSpecialtyPrice) {
-            setProfileData(prev => ({
-                ...prev,
-                specialties: [...prev.specialties, { name: newSpecialtyName.trim(), price: Number(newSpecialtyPrice) }]
-            }));
-            setNewSpecialtyName('');
-            setNewSpecialtyPrice('');
-        } else {
-             alert('Por favor, preencha o nome e o preço da especialidade.');
-        }
-    };
-    
-    const removeSpecialty = (indexToRemove: number) => {
-        setProfileData(prev => ({
-            ...prev,
-            specialties: prev.specialties.filter((_, index) => index !== indexToRemove)
-        }));
-    };
+    if (todayAppointments.length === 0) return null;
 
+    const nextAppointment = todayAppointments[0];
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024) { // 2MB limit
-                alert("O arquivo é muito grande. O limite é 2MB.");
-                return;
-            }
-            if (!file.type.startsWith('image/')) {
-                alert("Por favor, selecione um arquivo de imagem.");
-                return;
-            }
+    return (
+        <div className="bg-white rounded-xl shadow-md border-l-4 border-rose-500 p-4 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in-down">
+            <div className="flex items-start gap-3">
+                <div className="p-2 bg-rose-100 text-rose-600 rounded-full mt-1 md:mt-0">
+                    <BellIcon />
+                </div>
+                <div>
+                    <h3 className="font-bold text-stone-800">Lembretes de Hoje</h3>
+                    <p className="text-sm text-stone-500">
+                        Você tem <strong className="text-rose-600">{todayAppointments.length}</strong> atendimento(s) agendado(s) para hoje.
+                    </p>
+                </div>
+            </div>
             
-            setAvatarFile(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            <div className="w-full md:w-auto bg-stone-50 border border-stone-200 rounded-lg p-3 flex items-center gap-4">
+                <div className="text-center min-w-[3rem]">
+                    <p className="text-[10px] uppercase font-bold text-stone-400">Próximo</p>
+                    <p className="font-black text-xl text-stone-800">{nextAppointment.time}</p>
+                </div>
+                <div className="border-l border-stone-200 pl-4">
+                    <p className="font-bold text-stone-700 text-sm">{nextAppointment.client_name}</p>
+                    <p className="text-xs text-stone-500">{nextAppointment.service_name}</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+type Tab = 'agenda' | 'financial' | 'history' | 'services' | 'availability' | 'settings';
+
+const FinancialManagement: React.FC<{ appointments: Appointment[] }> = ({ appointments }) => {
+    const totalRevenue = appointments.reduce((sum, appt) => appt.status === 'completed' ? sum + appt.price : sum, 0);
+    const upcomingRevenue = appointments.reduce((sum, appt) => appt.status === 'upcoming' ? sum + appt.price : sum, 0);
+
+    return (
+        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in">
+            <h3 className="text-2xl font-bold text-stone-800 mb-6">Controle Financeiro</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-green-50 p-6 rounded-xl border border-green-100">
+                    <p className="text-green-600 text-sm font-bold uppercase tracking-wider mb-2">Ganhos Realizados</p>
+                    <p className="text-3xl font-black text-green-800">R$ {totalRevenue.toFixed(2)}</p>
+                </div>
+                <div className="bg-rose-50 p-6 rounded-xl border border-rose-100">
+                    <p className="text-rose-600 text-sm font-bold uppercase tracking-wider mb-2">Previsão Futura</p>
+                    <p className="text-3xl font-black text-rose-800">R$ {upcomingRevenue.toFixed(2)}</p>
+                </div>
+                <div className="bg-stone-50 p-6 rounded-xl border border-stone-200 flex items-center justify-center">
+                    <p className="text-stone-500 italic text-sm text-center">Relatórios detalhados disponíveis no plano Business.</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AppointmentHistory: React.FC<{ appointments: Appointment[]; onUpdate: (a: Appointment) => void }> = ({ appointments, onUpdate }) => {
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+
+    const filtered = useMemo(() => {
+        return appointments.filter(appt => {
+            const dateMatch = (!startDate || appt.date >= startDate) && (!endDate || appt.date <= endDate);
+            const statusMatch = statusFilter === 'all' || appt.status === statusFilter;
+            return dateMatch && statusMatch;
+        }).sort((a, b) => new Date(b.date + 'T' + b.time).getTime() - new Date(a.date + 'T' + a.time).getTime());
+    }, [appointments, startDate, endDate, statusFilter]);
+
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case 'completed': return 'bg-green-100 text-green-700 border-green-200';
+            case 'cancelled': return 'bg-stone-100 text-stone-500 border-stone-200';
+            default: return 'bg-rose-100 text-rose-700 border-rose-200';
         }
     };
 
-    const handleUpload = async () => {
-        if (!avatarFile) return;
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'completed': return 'Concluído';
+            case 'cancelled': return 'Cancelado';
+            default: return 'Agendado';
+        }
+    };
+
+    return (
+        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <h3 className="text-2xl font-bold text-stone-800">Histórico de Serviços</h3>
+                <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                    <div className="flex items-center bg-stone-50 border border-stone-200 rounded-lg px-2">
+                        <span className="text-[10px] font-bold text-stone-400 uppercase mr-2">De</span>
+                        <input 
+                            type="date" 
+                            value={startDate} 
+                            onChange={e => setStartDate(e.target.value)} 
+                            className="bg-transparent py-2 text-sm focus:outline-none"
+                        />
+                    </div>
+                    <div className="flex items-center bg-stone-50 border border-stone-200 rounded-lg px-2">
+                        <span className="text-[10px] font-bold text-stone-400 uppercase mr-2">Até</span>
+                        <input 
+                            type="date" 
+                            value={endDate} 
+                            onChange={e => setEndDate(e.target.value)} 
+                            className="bg-transparent py-2 text-sm focus:outline-none"
+                        />
+                    </div>
+                    <select 
+                        value={statusFilter} 
+                        onChange={e => setStatusFilter(e.target.value)}
+                        className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-200 focus:outline-none"
+                    >
+                        <option value="all">Todos os Status</option>
+                        <option value="upcoming">Agendados</option>
+                        <option value="completed">Concluídos</option>
+                        <option value="cancelled">Cancelados</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {filtered.length > 0 ? filtered.map(appt => (
+                    <details key={appt.id} className="group border rounded-xl overflow-hidden transition-all hover:border-rose-200">
+                        <summary className="list-none cursor-pointer p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-stone-50 transition-colors">
+                            <div className="flex items-center gap-4">
+                                <div className="text-center bg-stone-100 p-2 rounded-lg min-w-[60px] border border-stone-200">
+                                    <p className="text-[10px] uppercase font-bold text-stone-400 leading-none mb-1">{new Date(appt.date + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</p>
+                                    <p className="text-lg font-black text-stone-800 leading-none">{appt.date.split('-')[2]}</p>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-stone-800 flex items-center gap-2">
+                                        {appt.service_name}
+                                        <ChevronDownIcon />
+                                    </p>
+                                    <p className="text-xs text-stone-500">
+                                        Cliente: <span className="font-semibold text-stone-700">{appt.client_name}</span> • <span className="font-bold text-rose-500">{appt.time}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 mt-3 sm:mt-0 justify-between sm:justify-end">
+                                <span className="font-black text-stone-900 text-lg">R$ {appt.price.toFixed(2)}</span>
+                                <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${getStatusStyle(appt.status)}`}>
+                                    {getStatusLabel(appt.status)}
+                                </span>
+                            </div>
+                        </summary>
+                        <div className="p-5 bg-stone-50 border-t border-stone-100 text-sm text-stone-600 animate-fade-in-down">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Detalhes do Cliente</p>
+                                        <p className="font-bold text-stone-800 text-base">{appt.client_name}</p>
+                                        {appt.pet_name && (
+                                            <div className="mt-2 bg-white border border-stone-200 rounded-lg p-2 inline-block">
+                                                <p className="text-[10px] font-bold text-rose-400 uppercase leading-none mb-1">Paciente Pet</p>
+                                                <p className="text-sm font-semibold">{appt.pet_name} {appt.pet_breed ? `(${appt.pet_breed})` : ''}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">ID do Agendamento</p>
+                                        <p className="font-mono text-xs text-stone-400">#{appt.id.substring(0, 8).toUpperCase()}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Observações e Notas</p>
+                                    <div className="bg-white border border-stone-200 rounded-xl p-4 min-h-[80px]">
+                                        <p className="italic text-stone-600">{appt.notes || "Nenhuma observação interna ou detalhe do cliente registrado para este atendimento."}</p>
+                                    </div>
+                                    <p className="mt-3 text-[10px] text-stone-400">Data de Registro: {new Date(appt.date).toLocaleDateString('pt-BR')} às {appt.time}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                )) : (
+                    <div className="text-center py-20 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                        <div className="inline-block p-4 bg-stone-100 rounded-full mb-4">
+                            <ArchiveIcon />
+                        </div>
+                        <p className="text-stone-500 font-medium">Nenhum agendamento encontrado para os filtros aplicados.</p>
+                        <button 
+                            onClick={() => { setStartDate(''); setEndDate(''); setStatusFilter('all'); }} 
+                            className="mt-4 text-rose-500 font-bold hover:underline"
+                        >
+                            Limpar Filtros e Ver Todos
+                        </button>
+                    </div>
+                )}
+            </div>
+            <style>{`
+                @keyframes fade-in-down {
+                    from { opacity: 0; transform: translateY(-8px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in-down { animation: fade-in-down 0.25s cubic-bezier(0, 0, 0.2, 1) forwards; }
+                details summary::-webkit-details-marker { display: none; }
+            `}</style>
+        </div>
+    );
+};
+
+const ServiceEditor: React.FC<{ services: Service[]; userId: string; onServicesUpdate: (s: Service[]) => void }> = ({ services, userId, onServicesUpdate }) => {
+    const [name, setName] = useState('');
+    const [price, setPrice] = useState('');
+    const [duration, setDuration] = useState('60');
+
+    const handleAdd = async () => {
+        if (!name || !price) return;
+        const newService = { id: crypto.randomUUID(), name, price: Number(price), duration: Number(duration) };
+        const updated = [...services, newService];
+        
+        const { error } = await supabase.from('profiles').update({ services: updated }).eq('id', userId);
+        if (error) alert("Erro ao salvar serviço");
+        else {
+            onServicesUpdate(updated);
+            setName(''); setPrice(''); setDuration('60');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        const updated = services.filter(s => s.id !== id);
+        const { error } = await supabase.from('profiles').update({ services: updated }).eq('id', userId);
+        if (!error) onServicesUpdate(updated);
+    };
+
+    return (
+        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in">
+            <h3 className="text-2xl font-bold text-stone-800 mb-6">Gerenciar Serviços</h3>
+            <div className="grid gap-4 mb-8">
+                {services.map(s => (
+                    <div key={s.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-stone-50 transition-colors">
+                        <div>
+                            <p className="font-bold text-stone-800">{s.name}</p>
+                            <p className="text-xs text-stone-500">{s.duration} min • R$ {s.price.toFixed(2)}</p>
+                        </div>
+                        <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">&times;</button>
+                    </div>
+                ))}
+            </div>
+            <div className="bg-stone-50 p-6 rounded-xl space-y-4">
+                <p className="font-bold text-stone-700 text-sm">Adicionar Novo Serviço</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do Serviço" className="p-2 border rounded-lg text-sm" />
+                    <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="Preço (R$)" className="p-2 border rounded-lg text-sm" />
+                    <select value={duration} onChange={e => setDuration(e.target.value)} className="p-2 border rounded-lg text-sm">
+                        <option value="30">30 min</option>
+                        <option value="60">60 min</option>
+                        <option value="90">90 min</option>
+                        <option value="120">120 min</option>
+                    </select>
+                </div>
+                <button onClick={handleAdd} className="w-full bg-stone-800 text-white font-bold py-2 rounded-lg hover:bg-stone-900 transition-colors">Salvar Serviço</button>
+            </div>
+        </div>
+    );
+};
+
+const AvailabilityManager: React.FC<{ user: ProfessionalUser; onSettingsUpdate: (s: any) => void }> = ({ user, onSettingsUpdate }) => {
+    const [start, setStart] = useState(user.settings.workHours.start);
+    const [end, setStartEnd] = useState(user.settings.workHours.end);
+
+    const handleSave = async () => {
+        const newSettings = { ...user.settings, workHours: { start, end: end } };
+        const { error } = await supabase.from('profiles').update({ settings: newSettings }).eq('id', user.id);
+        if (!error) onSettingsUpdate(newSettings);
+        else alert("Erro ao salvar horários");
+    };
+
+    return (
+        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in">
+            <h3 className="text-2xl font-bold text-stone-800 mb-6">Configuração de Horários</h3>
+            <div className="space-y-6">
+                <div className="flex gap-6 items-center">
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Abertura</label>
+                        <input type="time" value={start} onChange={e => setStart(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-rose-200" />
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Fechamento</label>
+                        <input type="time" value={end} onChange={e => setStartEnd(e.target.value)} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-rose-200" />
+                    </div>
+                </div>
+                <button onClick={handleSave} className="w-full bg-rose-500 text-white font-black py-4 rounded-xl hover:bg-rose-600 shadow-lg shadow-rose-100">Atualizar Agenda</button>
+            </div>
+        </div>
+    );
+};
+
+const ProfileSettings: React.FC<{ user: ProfessionalUser; onProfileUpdate: (f: any) => void }> = ({ user, onProfileUpdate }) => {
+    const [name, setName] = useState(user.name);
+    const [whatsapp, setWhatsapp] = useState(user.whatsapp || '');
+    const [bio, setBio] = useState(user.bio || '');
+    const [coverUrl, setCoverUrl] = useState(user.coverImageUrl || '');
+    const [uploading, setUploading] = useState(false);
+
+    const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
 
         setUploading(true);
         try {
-            const fileExt = avatarFile.name.split('.').pop();
-            const filePath = `${user.id}.${fileExt}`;
+            const fileExt = file.name.split('.').pop();
+            const filePath = `covers/${user.id}-${Math.random()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, avatarFile, { upsert: true });
+                .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
             const { data: urlData } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath);
-            
-            if (!urlData.publicUrl) throw new Error("URL pública não encontrada.");
-            
-            const newImageUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
 
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ image_url: newImageUrl })
-                .eq('id', user.id);
-
-            if (updateError) throw updateError;
-            
-            onProfileUpdate({ imageUrl: newImageUrl });
-            alert("Foto de perfil atualizada!");
-        } catch (error: any) {
-            console.error("Erro ao atualizar a foto:", error);
-            alert(`Erro: ${error.message}`);
+            if (urlData.publicUrl) {
+                setCoverUrl(urlData.publicUrl);
+                await supabase.from('profiles').update({ cover_image_url: urlData.publicUrl }).eq('id', user.id);
+                onProfileUpdate({ coverImageUrl: urlData.publicUrl });
+            }
+        } catch (error) {
+            alert('Erro ao carregar imagem de capa.');
         } finally {
             setUploading(false);
         }
     };
-    
-    const handleProfileDetailsSave = async (e: React.FormEvent) => {
-        e.preventDefault();
 
-        if (profileData.specialties.length === 0) {
-            alert('Por favor, adicione ao menos uma especialidade.');
-            return;
-        }
-
-        setIsSaving(true);
-        
-        // First, handle photo upload if a new one is selected
-        if (avatarFile) {
-            await handleUpload();
-        }
-
-        // Then, update the rest of the profile data
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                name: profileData.name,
-                specialty: profileData.specialties,
-                whatsapp: profileData.whatsapp,
-            })
-            .eq('id', user.id);
-
-        if (error) {
-            alert('Erro ao salvar as alterações do perfil.');
-            console.error(error);
-        } else {
-            alert('Perfil atualizado com sucesso!');
-            onProfileUpdate(profileData);
-        }
-        setIsSaving(false);
+    const handleSave = async () => {
+        const { error } = await supabase.from('profiles').update({ name, whatsapp, bio }).eq('id', user.id);
+        if (!error) onProfileUpdate({ name, whatsapp, bio });
+        else alert("Erro ao atualizar perfil");
     };
-
-    const hasValidImage = previewUrl && (previewUrl.startsWith('http') || previewUrl.startsWith('blob'));
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-2xl font-bold text-stone-800 mb-6">Configurações do Perfil</h3>
-            <form onSubmit={handleProfileDetailsSave}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-                    {/* Avatar Section */}
-                    <div className="md:col-span-1 flex flex-col items-center text-center">
-                        {hasValidImage ? (
-                            <img src={previewUrl} alt="Pré-visualização do perfil" className="w-40 h-40 rounded-full object-cover border-4 border-stone-200 mb-4" />
-                        ) : (
-                             <div className={`w-40 h-40 rounded-full flex items-center justify-center text-white font-bold ${getColor(user.name)} border-4 border-stone-200 mb-4`}>
-                                <span className="text-5xl">{getInitials(user.name)}</span>
-                            </div>
-                        )}
-                        <label className="cursor-pointer bg-stone-100 text-stone-700 font-semibold py-2 px-4 rounded-lg hover:bg-stone-200 transition-colors w-full">
-                            <span>Escolher arquivo...</span>
-                            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                        </label>
-                        <p className="text-xs text-stone-500 mt-2">Max 2MB. JPG, PNG.</p>
-                        {avatarFile && <p className="text-xs text-stone-600 mt-1 font-semibold truncate w-full px-2">Arquivo: {avatarFile.name}</p>}
-                    </div>
-
-                    {/* Profile Details Form Section */}
-                    <div className="md:col-span-2">
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-stone-600 mb-1">Nome Completo</label>
-                                <input id="name" name="name" type="text" value={profileData.name} onChange={handleInputChange} className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300" />
-                            </div>
-                           <div>
-                                <label className="block text-sm font-medium text-stone-600 mb-1">Especialidades</label>
-                                <div className="border rounded-lg p-2 space-y-2">
-                                    {profileData.specialties.map((spec, index) => (
-                                        <div key={index} className="flex items-center justify-between bg-stone-100 p-2 rounded-lg text-sm">
-                                            <span>{spec.name} - R$ {spec.price.toFixed(2)}</span>
-                                            <button type="button" onClick={() => removeSpecialty(index)} className="ml-2 text-red-500 hover:text-red-700 font-bold">&times;</button>
-                                        </div>
-                                    ))}
-                                    <div className="flex items-end gap-2 border-t pt-2">
-                                        <div className="flex-grow">
-                                            <input 
-                                                type="text" 
-                                                value={newSpecialtyName} 
-                                                onChange={e => setNewSpecialtyName(e.target.value)}
-                                                className="w-full px-2 py-1 border rounded-lg text-sm"
-                                                placeholder="Nome da Especialidade"
-                                            />
-                                        </div>
-                                        <div className="w-24">
-                                            <input 
-                                                type="number" 
-                                                value={newSpecialtyPrice} 
-                                                onChange={e => setNewSpecialtyPrice(e.target.value)}
-                                                className="w-full px-2 py-1 border rounded-lg text-sm"
-                                                placeholder="Preço"
-                                                step="0.01"
-                                            />
-                                        </div>
-                                        <button type="button" onClick={handleAddSpecialty} className="h-9 bg-stone-700 text-white font-semibold px-3 rounded-lg hover:bg-stone-800 text-sm">Add</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <label htmlFor="whatsapp" className="block text-sm font-medium text-stone-600 mb-1">WhatsApp</label>
-                                <input id="whatsapp" name="whatsapp" type="tel" value={profileData.whatsapp} onChange={handleInputChange} className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300" placeholder="(XX) XXXXX-XXXX" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                 <div className="mt-8 pt-6 border-t flex justify-end">
-                     <button 
-                        type="submit"
-                        disabled={isSaving || uploading}
-                        className="bg-rose-500 text-white font-bold py-2 px-8 rounded-lg hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isSaving || uploading ? 'Salvando...' : 'Salvar Alterações'}
-                    </button>
-                </div>
-            </form>
-        </div>
-    );
-};
-
-
-const AppointmentHistory: React.FC<{
-    appointments: Appointment[];
-    onUpdate: (updatedAppointment: Appointment) => void;
-}> = ({ appointments, onUpdate }) => {
-    const [filter, setFilter] = useState<'upcoming' | 'completed' | 'cancelled'>('upcoming');
-    const [loadingAction, setLoadingAction] = useState<string | null>(null);
-
-    const handleUpdateStatus = async (appointmentId: string, status: 'completed' | 'cancelled') => {
-        if (status === 'cancelled' && !window.confirm('Tem certeza que deseja cancelar este agendamento?')) return;
-        
-        setLoadingAction(appointmentId);
-        const { data, error } = await supabase
-            .from('appointments')
-            .update({ status })
-            .eq('id', appointmentId)
-            .select()
-            .single();
-
-        if (error) {
-            alert(`Erro ao ${status === 'completed' ? 'finalizar' : 'cancelar'} o agendamento.`);
-            console.error(error);
-        } else if (data) {
-            onUpdate(data);
-        }
-        setLoadingAction(null);
-    };
-
-    const filteredAppointments = useMemo(() =>
-        appointments
-            .filter(appt => appt.status === filter)
-            .sort((a, b) => new Date(b.date + 'T' + b.time).getTime() - new Date(a.date + 'T' + a.time).getTime())
-    , [appointments, filter]);
-
-    const HistoryCard: React.FC<{ appointment: Appointment }> = ({ appointment }) => (
-        <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 flex flex-col sm:flex-row items-start gap-4">
-            <div className="flex-grow">
-                <h4 className="font-bold text-stone-800">{appointment.service_name}</h4>
-                <p className="text-sm text-stone-600">Cliente: {appointment.client_name}</p>
-                <p className="text-sm text-stone-500 mt-1">
-                    {new Date(appointment.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })} às {appointment.time}
-                </p>
-            </div>
-            <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
-                 <p className="font-bold text-lg text-rose-600">R$ {appointment.price.toFixed(2)}</p>
-                {appointment.status === 'upcoming' && (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}
-                            disabled={loadingAction === appointment.id}
-                            className="text-xs font-semibold py-1 px-3 rounded-md bg-stone-200 text-stone-700 hover:bg-stone-300 transition-colors disabled:opacity-50"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={() => handleUpdateStatus(appointment.id, 'completed')}
-                            disabled={loadingAction === appointment.id}
-                            className="text-xs font-semibold py-1 px-3 rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
-                        >
-                            Finalizar
-                        </button>
+        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in">
+            <h3 className="text-2xl font-bold text-stone-800 mb-6">Identidade Visual e Perfil</h3>
+            
+            <div className="mb-10 group relative rounded-2xl overflow-hidden bg-stone-100 border-4 border-stone-50 shadow-inner h-48 md:h-64">
+                {coverUrl ? (
+                    <img src={coverUrl} alt="Capa" className="w-full h-full object-cover" />
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-stone-400">
+                        <CameraIcon />
+                        <span className="text-sm font-bold mt-2">Clique para adicionar uma capa</span>
                     </div>
                 )}
+                <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/0 hover:bg-black/20 transition-all group-hover:bg-black/10">
+                    <div className="bg-white/90 backdrop-blur p-3 rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                        <CameraIcon />
+                        <span className="text-xs font-black uppercase text-stone-800">{uploading ? 'Carregando...' : 'Trocar Capa'}</span>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} disabled={uploading} />
+                </label>
             </div>
-        </div>
-    );
 
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-2xl font-bold text-stone-800 mb-4">Histórico de Agendamentos</h3>
-            <div className="flex border-b mb-4">
-                <button onClick={() => setFilter('upcoming')} className={`px-4 py-2 font-semibold ${filter === 'upcoming' ? 'text-rose-600 border-b-2 border-rose-600' : 'text-stone-500'}`}>Próximos</button>
-                <button onClick={() => setFilter('completed')} className={`px-4 py-2 font-semibold ${filter === 'completed' ? 'text-rose-600 border-b-2 border-rose-600' : 'text-stone-500'}`}>Concluídos</button>
-                <button onClick={() => setFilter('cancelled')} className={`px-4 py-2 font-semibold ${filter === 'cancelled' ? 'text-rose-600 border-b-2 border-rose-600' : 'text-stone-500'}`}>Cancelados</button>
-            </div>
-            {filteredAppointments.length > 0 ? (
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {filteredAppointments.map(appt => <HistoryCard key={appt.id} appointment={appt} />)}
+            <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Nome Público</label>
+                        <input value={name} onChange={e => setName(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">WhatsApp de Agendamento</label>
+                        <input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" placeholder="(XX) XXXXX-XXXX" />
+                    </div>
                 </div>
-            ) : (
-                <p className="text-center text-stone-500 py-8">Nenhum agendamento encontrado para este filtro.</p>
-            )}
+                <div>
+                    <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Descrição Detalhada / Bio</label>
+                    <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" rows={6} placeholder="Conte sua história, descreva seus diferenciais, experiência e o que seus clientes podem esperar do seu atendimento..." />
+                </div>
+                <button onClick={handleSave} className="w-full bg-stone-900 text-white font-black py-4 rounded-xl hover:bg-stone-800 transition-all shadow-xl shadow-stone-100 mt-4">SALVAR ALTERAÇÕES NO PERFIL</button>
+            </div>
         </div>
     );
 };
-
-
-type Tab = 'agenda' | 'history' | 'services' | 'availability' | 'settings';
 
 export const ProfessionalDashboard: React.FC<ProfessionalDashboardProps> = ({ user, onProfileUpdate }) => {
     const [activeTab, setActiveTab] = useState<Tab>('agenda');
@@ -797,6 +643,7 @@ export const ProfessionalDashboard: React.FC<ProfessionalDashboardProps> = ({ us
     const [loading, setLoading] = useState(true);
     const [localUser, setLocalUser] = useState(user);
     const [isQuickBookModalOpen, setIsQuickBookModalOpen] = useState(false);
+    const [modalInitialDate, setModalInitialDate] = useState<Date | undefined>(undefined);
 
     const fetchAppointments = useCallback(async () => {
         setLoading(true);
@@ -835,6 +682,7 @@ export const ProfessionalDashboard: React.FC<ProfessionalDashboardProps> = ({ us
     
     const handleAppointmentCreated = useCallback(() => {
         fetchAppointments();
+        setIsQuickBookModalOpen(false);
     }, [fetchAppointments]);
     
     const handleAppointmentUpdate = useCallback((updatedAppointment: Appointment) => {
@@ -846,26 +694,14 @@ export const ProfessionalDashboard: React.FC<ProfessionalDashboardProps> = ({ us
         const dateStr = selectedDate.toISOString().split('T')[0];
         return appointmentsByDate.get(dateStr) || [];
     }, [selectedDate, appointmentsByDate]);
-    
-    const handleServicesUpdate = (updatedServices: Service[]) => {
-        const updatedFields = { services: updatedServices };
-        setLocalUser(prevUser => ({ ...prevUser, ...updatedFields }));
-        onProfileUpdate(updatedFields);
-    };
 
-    const handleSettingsUpdate = (updatedSettings: ProfessionalUser['settings']) => {
-        const updatedFields = { settings: updatedSettings };
-        setLocalUser(prevUser => ({ ...prevUser, ...updatedFields }));
-        onProfileUpdate(updatedFields);
-    };
-
-    const handleLocalProfileUpdate = (updatedFields: Partial<ProfessionalUser>) => {
-        setLocalUser(prev => ({ ...prev, ...updatedFields }));
-        onProfileUpdate(updatedFields);
+    const handleOpenQuickBook = (date?: Date) => {
+        setModalInitialDate(date);
+        setIsQuickBookModalOpen(true);
     };
 
     const TabButton: React.FC<{ tabName: Tab; label: string; icon: React.ReactNode; }> = ({ tabName, label, icon }) => (
-         <button onClick={() => setActiveTab(tabName)} className={`flex items-center px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${activeTab === tabName ? 'bg-white text-rose-600 border-b-0' : 'bg-transparent text-stone-600 hover:bg-white/50'}`}>
+         <button onClick={() => setActiveTab(tabName)} className={`flex items-center px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${activeTab === tabName ? 'bg-white text-rose-600 border-b-0 shadow-sm' : 'bg-transparent text-stone-600 hover:bg-white/50'}`}>
             {icon}
             {label}
         </button>
@@ -874,33 +710,36 @@ export const ProfessionalDashboard: React.FC<ProfessionalDashboardProps> = ({ us
     return (
         <div className="container mx-auto px-6 py-8">
             <div className="mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-stone-800">Painel do Profissional</h1>
-                <p className="text-stone-500 mt-2 text-lg">Bem-vindo(a), {user.name.split(' ')[0]}! Gerencie sua agenda aqui.</p>
+                <h1 className="text-3xl md:text-4xl font-extrabold text-stone-900 tracking-tight">Painel de Gestão</h1>
+                <p className="text-stone-500 mt-2 text-lg">Olá, {user.name}! Bem-vindo ao controle total do seu negócio.</p>
             </div>
             
-            <div className="border-b border-stone-200 flex items-center mb-6 flex-wrap">
+            <ProfessionalNotifications appointments={appointments} />
+            
+            <div className="border-b border-stone-200 flex items-center mb-6 flex-wrap overflow-x-auto no-scrollbar">
                 <TabButton tabName="agenda" label="Agenda" icon={<CalendarIcon />} />
+                <TabButton tabName="financial" label="Financeiro" icon={<TrendingUpIcon />} />
                 <TabButton tabName="history" label="Histórico" icon={<ArchiveIcon />} />
-                <TabButton tabName="services" label="Meus Serviços" icon={<ClipboardListIcon />} />
-                <TabButton tabName="availability" label="Disponibilidade" icon={<CogIcon />} />
-                <TabButton tabName="settings" label="Configurações" icon={<UserIcon />} />
+                <TabButton tabName="services" label="Serviços" icon={<ClipboardListIcon />} />
+                <TabButton tabName="availability" label="Horários" icon={<CogIcon />} />
+                <TabButton tabName="settings" label="Perfil" icon={<UserIcon />} />
             </div>
 
             <div id="tab-content">
-                {loading && <p>Carregando...</p>}
+                {loading && <div className="py-20 text-center"><div className="animate-spin h-10 w-10 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div><p className="text-stone-500">Sincronizando dados...</p></div>}
+                
                 {!loading && activeTab === 'agenda' && (
                     <>
                          <div className="flex justify-end mb-4">
                             <button 
-                                onClick={() => setIsQuickBookModalOpen(true)}
-                                className="flex items-center bg-rose-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-rose-600 transition-colors duration-300"
+                                onClick={() => handleOpenQuickBook(new Date())}
+                                className="bg-rose-600 text-white font-black py-3 px-6 rounded-full hover:bg-rose-700 transition-all shadow-xl shadow-rose-200 flex items-center"
                             >
-                                <PlusCircleIcon />
-                                Agendamento Rápido
+                                <PlusCircleIcon /> Agendamento Manual
                             </button>
                         </div>
-                        <div className="flex flex-col lg:flex-row gap-6">
-                           <div className="flex-grow">
+                        <div className="flex flex-col lg:flex-row gap-6 items-start">
+                           <div className="flex-grow w-full">
                                 <ProfessionalCalendar 
                                     appointmentsByDate={appointmentsByDate}
                                     onDateSelect={handleDateSelect}
@@ -913,43 +752,29 @@ export const ProfessionalDashboard: React.FC<ProfessionalDashboardProps> = ({ us
                                     appointments={appointmentsForSelectedDate}
                                     settings={localUser.settings}
                                     onClose={() => setSelectedDate(null)}
+                                    onAddClick={() => handleOpenQuickBook(selectedDate)}
                                     onAppointmentUpdate={handleAppointmentUpdate}
                                 />
                             )}
                         </div>
                     </>
                 )}
-                {activeTab === 'history' && <AppointmentHistory appointments={appointments} onUpdate={handleAppointmentUpdate} />}
-                {activeTab === 'services' && <ServiceEditor services={localUser.services} userId={user.id} onServicesUpdate={handleServicesUpdate} />}
-                {activeTab === 'availability' && <AvailabilityManager user={localUser} appointmentsByDate={appointmentsByDate} onSettingsUpdate={handleSettingsUpdate} />}
-                {activeTab === 'settings' && <ProfileSettings user={localUser} onProfileUpdate={handleLocalProfileUpdate} />}
+                
+                {!loading && activeTab === 'financial' && <FinancialManagement appointments={appointments} />}
+                {!loading && activeTab === 'history' && <AppointmentHistory appointments={appointments} onUpdate={handleAppointmentUpdate} />}
+                {!loading && activeTab === 'services' && <ServiceEditor services={localUser.services} userId={user.id} onServicesUpdate={(s) => { setLocalUser({...localUser, services: s}); onProfileUpdate({services: s}); }} />}
+                {!loading && activeTab === 'availability' && <AvailabilityManager user={localUser} onSettingsUpdate={(s) => { setLocalUser({...localUser, settings: s}); onProfileUpdate({settings: s}); }} />}
+                {!loading && activeTab === 'settings' && <ProfileSettings user={localUser} onProfileUpdate={(f) => { setLocalUser({...localUser, ...f}); onProfileUpdate(f); }} />}
             </div>
+
              {isQuickBookModalOpen && (
                 <QuickBookModal
                     user={localUser}
-                    appointmentsForToday={appointmentsByDate.get(new Date().toISOString().split('T')[0]) || []}
+                    initialDate={modalInitialDate}
                     onClose={() => setIsQuickBookModalOpen(false)}
-                    onBookingSuccess={() => {
-                        setIsQuickBookModalOpen(false);
-                        handleAppointmentCreated();
-                    }}
+                    onBookingSuccess={handleAppointmentCreated}
                 />
             )}
-            <style>{`
-                @keyframes fade-in-right {
-                    from {
-                        opacity: 0;
-                        transform: translateX(20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateX(0);
-                    }
-                }
-                .animate-fade-in-right {
-                    animation: fade-in-right 0.4s ease-out forwards;
-                }
-            `}</style>
         </div>
     );
 };

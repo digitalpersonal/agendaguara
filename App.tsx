@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -6,6 +7,8 @@ import { Dashboard } from './pages/Dashboard';
 import { ProfessionalDashboard } from './pages/ProfessionalDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AuthModal } from './components/AuthModal';
+import { ReminderSystem } from './components/ReminderSystem';
+import { InstallPrompt } from './components/InstallPrompt';
 import type { User, ProfessionalUser, AdminUser } from './types';
 import { supabase } from './utils/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -40,6 +43,7 @@ const App: React.FC = () => {
             name: data.name || session.user.email?.split('@')[0] || 'Profissional',
             email: session.user.email!,
             imageUrl: data.image_url || `https://i.pravatar.cc/150?u=${session.user.id}`,
+            coverImageUrl: data.cover_image_url,
             role: 'professional',
             whatsapp: data.whatsapp,
             specialties: data.specialty || [{ name: 'Especialista em Destaque', price: 0 }],
@@ -50,6 +54,7 @@ const App: React.FC = () => {
               blockedDays: [],
               blockedTimeSlots: {},
             },
+            bio: data.bio
           };
           setCurrentUser(professionalUser);
         } else {
@@ -138,7 +143,9 @@ const App: React.FC = () => {
       <main className="flex-grow">
         {renderContent()}
       </main>
-      <Footer />
+      <Footer onSignUpClick={handleOpenAuthModal} />
+      {currentUser && <ReminderSystem user={currentUser} />}
+      <InstallPrompt />
       {isAuthModalOpen && (
         <AuthModal 
           onClose={handleCloseAuthModal}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Testimonial } from '../types';
 import { supabase, getInitials, getColor } from '../utils/supabase';
@@ -11,44 +12,59 @@ const StarIcon: React.FC<{ className?: string }> = ({ className }) => (
 export const Testimonials: React.FC = () => {
     const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     
-    useEffect(() => {
-        const fetchTestimonials = async () => {
-            setLoading(true);
+    const fetchTestimonials = async () => {
+        setLoading(true);
+        try {
             const { data, error } = await supabase
                 .from('testimonials')
                 .select('id, name, text, rating, imageUrl:image_url')
                 .limit(3);
 
-            if (error) {
-                console.error("Error fetching testimonials:", error.message);
-                setError('Não foi possível carregar os depoimentos.');
-            } else if (data) {
+            if (error || !data) {
+                setTestimonials([]);
+            } else {
                 setTestimonials(data as Testimonial[]);
             }
+        } catch (err: any) {
+            setTestimonials([]);
+        } finally {
             setLoading(false);
-        };
+        }
+    };
+
+    useEffect(() => {
         fetchTestimonials();
     }, []);
 
+    if (!loading && testimonials.length === 0) {
+        return null; // Oculta a seção se não houver depoimentos reais
+    }
+
     const renderContent = () => {
         if (loading) {
-            return <p className="text-center text-stone-500">Carregando depoimentos...</p>;
+            return (
+                <div className="flex justify-center py-12">
+                     <div className="animate-pulse flex space-x-4">
+                        <div className="rounded-full bg-stone-200 h-12 w-12"></div>
+                        <div className="flex-1 space-y-4 py-1">
+                            <div className="h-4 bg-stone-200 rounded w-3/4"></div>
+                            <div className="space-y-2">
+                                <div className="h-4 bg-stone-200 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
         }
-        if (error) {
-            return <p className="text-center text-red-500 mb-8">{error}</p>;
-        }
-        if (testimonials.length === 0) {
-            return <p className="text-center text-stone-500">Ainda não há depoimentos para mostrar.</p>;
-        }
+
         return (
             <div className="grid md:grid-cols-3 gap-8">
                 {testimonials.map((testimonial) => {
                     const hasValidImage = testimonial.imageUrl && testimonial.imageUrl.startsWith('http');
                     return (
-                        <div key={testimonial.id} className="bg-white p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:-translate-y-2">
-                            <div className="flex items-center mb-4">
+                        <div key={testimonial.id} className="bg-white p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:-translate-y-2 border border-stone-50">
+                            <div className="flex items-center mb-6">
                                 {hasValidImage ? (
                                     <img src={testimonial.imageUrl} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover mr-4 border-2 border-rose-200" />
                                 ) : (
@@ -60,12 +76,12 @@ export const Testimonials: React.FC = () => {
                                     <h4 className="text-lg font-bold text-stone-800">{testimonial.name}</h4>
                                     <div className="flex text-amber-400">
                                         {[...Array(testimonial.rating)].map((_, i) => (
-                                            <StarIcon key={i} className="w-5 h-5" />
+                                            <StarIcon key={i} className="w-4 h-4" />
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                            <p className="text-stone-600 italic">"{testimonial.text}"</p>
+                            <p className="text-stone-600 italic leading-relaxed">"{testimonial.text}"</p>
                         </div>
                     );
                 })}
@@ -74,11 +90,11 @@ export const Testimonials: React.FC = () => {
     };
     
     return (
-        <section className="py-16 bg-stone-100">
+        <section className="py-20 bg-stone-50">
             <div className="container mx-auto px-6">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-stone-800">O que nossos clientes dizem</h2>
-                    <p className="text-stone-500 mt-2 text-lg">Confiança e satisfação em cada agendamento.</p>
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl md:text-4xl font-bold text-stone-900 tracking-tight">Avaliações</h2>
+                    <p className="text-stone-500 mt-4 text-lg">Feedback de clientes reais.</p>
                 </div>
                 {renderContent()}
             </div>

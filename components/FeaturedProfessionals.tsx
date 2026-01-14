@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Professional } from '../types';
 import { supabase, getInitials, getColor } from '../utils/supabase';
@@ -9,6 +10,12 @@ interface FeaturedProfessionalsProps {
 const StarIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
         <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.007z" clipRule="evenodd" />
+    </svg>
+);
+
+const UserIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
 );
 
@@ -32,12 +39,12 @@ const ProfessionalCard: React.FC<{ professional: Professional; onScheduleClick: 
                             <p key={i} className="truncate">{s.name} - R$ {s.price.toFixed(2)}</p>
                         ))
                     ) : (
-                        <p className="text-stone-500">Nenhuma especialidade listada.</p>
+                        <p className="text-stone-500">Serviços sob consulta</p>
                     )}
                 </div>
                 <div className="flex items-center text-amber-400 mb-4">
                     <StarIcon className="w-5 h-5" />
-                    <span className="text-stone-600 font-semibold ml-1">{professional.rating?.toFixed(1) || 'N/A'}</span>
+                    <span className="text-stone-600 font-semibold ml-1">{professional.rating?.toFixed(1) || '5.0'}</span>
                 </div>
                 <div className="mt-auto">
                     <button 
@@ -56,48 +63,63 @@ const ProfessionalCard: React.FC<{ professional: Professional; onScheduleClick: 
 export const FeaturedProfessionals: React.FC<FeaturedProfessionalsProps> = ({ onScheduleClick }) => {
     const [professionals, setProfessionals] = useState<Professional[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchProfessionals = async () => {
-            setLoading(true);
+    const fetchProfessionals = async () => {
+        setLoading(true);
+        try {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, name, specialties:specialty, imageUrl:image_url, services, settings')
                 .eq('role', 'professional')
-                .limit(4);
+                .limit(8); // Increased limit slightly
 
             if (error) {
                 console.error("Error fetching professionals:", error.message);
-                setError('Não foi possível carregar os profissionais.');
-            } else if (data) {
+                setProfessionals([]);
+            } else if (data && data.length > 0) {
                 setProfessionals(data as Professional[]);
+            } else {
+                setProfessionals([]);
             }
+        } catch (err: any) {
+            console.error("Network error:", err.message);
+            setProfessionals([]);
+        } finally {
             setLoading(false);
-        };
+        }
+    };
 
+    useEffect(() => {
         fetchProfessionals();
     }, []);
 
     const renderContent = () => {
         if (loading) {
-            return <div className="text-center"><p>Carregando profissionais...</p></div>;
-        }
-        if (error) {
-            return <div className="text-center text-red-500">{error}</div>;
-        }
-        if (professionals.length > 0) {
             return (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {professionals.map((prof) => (
-                        <ProfessionalCard key={prof.id} professional={prof} onScheduleClick={onScheduleClick} />
-                    ))}
+                <div className="flex flex-col items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500 mb-4"></div>
+                    <p className="text-stone-500">Buscando especialistas...</p>
                 </div>
             );
         }
+
+        if (professionals.length === 0) {
+             return (
+                <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-stone-100">
+                    <div className="inline-block p-4 bg-stone-100 rounded-full mb-4">
+                        <UserIcon />
+                    </div>
+                    <h3 className="text-xl font-bold text-stone-800">Ainda não há profissionais cadastrados</h3>
+                    <p className="text-stone-500 mt-2">Seja o primeiro especialista a fazer parte da AgendaGuara!</p>
+                </div>
+            );
+        }
+        
         return (
-            <div className="text-center">
-                <p className="text-stone-500">Nenhum profissional em destaque no momento.</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                {professionals.map((prof) => (
+                    <ProfessionalCard key={prof.id} professional={prof} onScheduleClick={onScheduleClick} />
+                ))}
             </div>
         );
     };
@@ -106,8 +128,8 @@ export const FeaturedProfessionals: React.FC<FeaturedProfessionalsProps> = ({ on
         <section id="professionals" className="py-16 bg-stone-100">
             <div className="container mx-auto px-6">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-stone-800">Profissionais em Destaque</h2>
-                    <p className="text-stone-500 mt-2 text-lg">Especialistas prontos para cuidar de você.</p>
+                    <h2 className="text-3xl md:text-4xl font-bold text-stone-800 tracking-tight">Especialistas Parceiros</h2>
+                    <p className="text-stone-500 mt-3 text-lg">Profissionais prontos para lhe atender em Guaranésia.</p>
                 </div>
                 {renderContent()}
             </div>

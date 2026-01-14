@@ -1,7 +1,7 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Professional, Service, User, ProfessionalUser, Appointment, ProfessionalSettings } from '../types';
 import { supabase } from '../utils/supabase';
-import { beautyServices, healthServices, petServices } from '../constants';
 
 interface BookingModalProps {
     professional?: Professional | null;
@@ -12,12 +12,6 @@ interface BookingModalProps {
 
 const XIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-
-const servicesByCategory: { [key: string]: Service[] } = {
-    'Beleza': beautyServices,
-    'Saúde': healthServices,
-    'Pet Shop': petServices,
-};
 
 const generateTimeSlots = (date: Date, settings: ProfessionalSettings, professionalAppointments: Pick<Appointment, 'time'>[]) => {
     if (!settings?.workHours) return [];
@@ -54,45 +48,54 @@ const generateTimeSlots = (date: Date, settings: ProfessionalSettings, professio
 };
 
 export const BookingModal: React.FC<BookingModalProps> = ({ professional, category, user, onClose }) => {
-    const isServiceLedFlow = !professional;
-
-    const [step, setStep] = useState(1);
-    const [selectedService, setSelectedService] = useState<Service | null>(null);
+    // Flow Logic:
+    // If professional provided: Step 1 = Services, Step 2 = Date, Step 3 = Confirm
+    // If category provided: Step 1 = Select Professional, Step 2 = Services, Step 3 = Date, Step 4 = Confirm
+    
+    const initialStep = professional ? 2 : 1;
+    const [step, setStep] = useState(initialStep);
+    
     const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(professional || null);
+    const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [notes, setNotes] = useState('');
     
-    const [professionalsForService, setProfessionalsForService] = useState<Professional[]>([]);
+    const [professionalsList, setProfessionalsList] = useState<Professional[]>([]);
     const [loadingProfessionals, setLoadingProfessionals] = useState(false);
     
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
     const [loadingAvailability, setLoadingAvailability] = useState(false);
     const [justSelectedTime, setJustSelectedTime] = useState<string | null>(null);
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fetch professionals if we are in "Category" flow
     useEffect(() => {
-        if (isServiceLedFlow && selectedService) {
+        if (!professional) {
             const fetchProfessionals = async () => {
                 setLoadingProfessionals(true);
+                // In a real big app, we would filter by category in the DB query using a junction table or JSONB filter.
+                // For this scale, fetching all professionals and filtering/displaying is acceptable.
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('id, name, specialties:specialty, imageUrl:image_url, services, settings')
+                    .select('id, name, specialties:specialty, imageUrl:image_url, coverImageUrl:cover_image_url, services, settings, bio')
                     .eq('role', 'professional');
 
                 if (error) {
-                    console.error("Error fetching professionals for service:", error);
+                    console.error("Error fetching professionals:", error);
                     setError("Não foi possível carregar os profissionais.");
                 } else if (data) {
-                    const filtered = data.filter(p => p.services?.some((s: Service) => s.name === selectedService.name));
-                    setProfessionalsForService(filtered as Professional[]);
+                    setProfessionalsList(data as Professional[]);
                 }
                 setLoadingProfessionals(false);
             };
             fetchProfessionals();
         }
-    }, [isServiceLedFlow, selectedService]);
+    }, [professional]);
 
+    // Fetch availability when professional + date are selected
     useEffect(() => {
         if (selectedProfessional?.settings && selectedDate) {
             const fetchAvailability = async () => {
@@ -127,6 +130,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         setError(null);
         
         const dateStr = selectedDate.toISOString().split('T')[0];
+        
+        // Double check for collisions
         const { data: existingAppointment, error: checkError } = await supabase
             .from('appointments')
             .select('id')
@@ -136,8 +141,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
             .eq('status', 'upcoming');
 
         if (checkError) {
-            console.error("Error checking for existing appointment:", checkError);
-            setError("Ocorreu um erro ao verificar sua agenda. Tente novamente.");
+            setError("Erro de conexão. Tente novamente.");
             setIsSubmitting(false);
             return;
         }
@@ -158,15 +162,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
             date: dateStr,
             time: selectedTime,
             price: selectedService.price,
+            notes: notes.trim(),
             status: 'upcoming' as const
         };
+        
         const { error } = await supabase.from('appointments').insert([appointmentData]);
+        
         if (error) {
             console.error("Error creating appointment:", error);
-            setError("Não foi possível criar o agendamento. Tente novamente.");
+            setError("Não foi possível criar o agendamento.");
             setIsSubmitting(false);
         } else {
-            setStep(prev => prev + 1);
+            setStep(prev => prev + 1); // Move to Success Step
             setIsSubmitting(false);
         }
     };
@@ -177,56 +184,106 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
     };
     const handlePrevStep = () => setStep(prev => prev - 1);
 
-    const renderSelectService = () => {
-        const services = isServiceLedFlow ? servicesByCategory[category!] : selectedProfessional?.services || [];
-        const title = isServiceLedFlow ? `1. Escolha um serviço em ${category}` : "1. Escolha um serviço";
+    // STEP 1: Select Professional (Only if one wasn't passed in props)
+    const renderSelectProfessional = () => {
+        const title = category ? `1. Profissionais` : "1. Escolha um profissional";
+        const subtitle = category ? `Especialistas em ${category}` : "Todos os especialistas";
+
         return (
             <div>
-                <h3 className="text-xl font-semibold mb-4 text-stone-700">{title}</h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {services.map(service => (
-                        <div key={service.id} onClick={() => { setSelectedService(service); setStep(2); }} className="p-4 border rounded-lg cursor-pointer transition-all duration-200 border-stone-200 hover:bg-stone-100">
-                            <div className="flex justify-between items-center">
-                                <span className="font-semibold text-stone-800">{service.name}</span>
-                                <span className="text-stone-600">R$ {service.price.toFixed(2)}</span>
+                <h3 className="text-xl font-semibold text-stone-700">{title}</h3>
+                <p className="text-sm text-stone-500 mb-4">{subtitle}</p>
+                {loadingProfessionals ? (
+                    <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div></div>
+                ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                        {professionalsList.length > 0 ? professionalsList.map(prof => (
+                            <div key={prof.id} onClick={() => { setSelectedProfessional(prof); setStep(2); }} className="flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 border-stone-200 hover:bg-stone-50 group hover:border-rose-200">
+                                <img src={prof.imageUrl} alt={prof.name} className="w-12 h-12 rounded-full object-cover mr-4 border border-stone-200" />
+                                <div>
+                                    <p className="font-semibold text-stone-800 group-hover:text-rose-600 transition-colors">{prof.name}</p>
+                                    <p className="text-xs text-stone-500">{prof.specialties?.map(s => s.name).join(', ')}</p>
+                                </div>
                             </div>
-                            <p className="text-sm text-stone-500">{service.duration} minutos</p>
-                        </div>
-                    ))}
-                </div>
+                        )) : <p className="text-stone-500 text-center py-4">Nenhum profissional disponível no momento.</p>}
+                    </div>
+                )}
             </div>
         );
     };
 
-    const renderSelectProfessional = () => (
-        <div>
-            <h3 className="text-xl font-semibold mb-4 text-stone-700">2. Escolha um profissional</h3>
-            {loadingProfessionals ? <p>Carregando...</p> : (
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {professionalsForService.length > 0 ? professionalsForService.map(prof => (
-                        <div key={prof.id} onClick={() => { setSelectedProfessional(prof); setStep(3); }} className="flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 border-stone-200 hover:bg-stone-100">
-                            <img src={prof.imageUrl} alt={prof.name} className="w-12 h-12 rounded-full object-cover mr-4" />
-                            <div>
-                                <p className="font-semibold text-stone-800">{prof.name}</p>
-                                <p className="text-sm text-stone-500">{prof.specialties?.map(s => s.name).join(', ')}</p>
-                            </div>
+    // STEP 2: Select Service
+    const renderSelectService = () => {
+        if (!selectedProfessional) return null;
+        
+        return (
+            <div>
+                 <div className="mb-6 -mx-6 -mt-6">
+                    <div className="h-28 bg-stone-100 relative">
+                        {selectedProfessional.coverImageUrl ? (
+                            <img src={selectedProfessional.coverImageUrl} className="w-full h-full object-cover opacity-90" alt="Capa" />
+                        ) : (
+                            <div className="w-full h-full bg-stone-200"></div>
+                        )}
+                        <div className="absolute -bottom-10 left-6">
+                            <img src={selectedProfessional.imageUrl} className="w-20 h-20 rounded-full border-4 border-white shadow-lg object-cover" alt={selectedProfessional.name} />
                         </div>
-                    )) : <p className="text-stone-500">Nenhum profissional oferece este serviço no momento.</p>}
+                    </div>
+                    <div className="pt-12 px-6">
+                        <h4 className="text-xl font-bold text-stone-800">{selectedProfessional.name}</h4>
+                        <p className="text-sm text-stone-500">{selectedProfessional.specialties?.map(s => s.name).join(' • ')}</p>
+                    </div>
                 </div>
-            )}
-        </div>
-    );
+
+                <h3 className="text-lg font-semibold mb-4 text-stone-700">Selecione o Serviço</h3>
+                {selectedProfessional.services && selectedProfessional.services.length > 0 ? (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        {selectedProfessional.services.map(service => (
+                            <div key={service.id} onClick={() => { setSelectedService(service); setStep(3); }} className="p-4 border rounded-lg cursor-pointer transition-all duration-200 border-stone-200 hover:bg-stone-50 hover:border-rose-200 group">
+                                <div className="flex justify-between items-center">
+                                    <span className="font-semibold text-stone-800 group-hover:text-rose-600">{service.name}</span>
+                                    <span className="text-stone-600 font-bold">R$ {service.price.toFixed(2)}</span>
+                                </div>
+                                <p className="text-xs text-stone-400 mt-1">{service.duration} minutos</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-6 bg-stone-50 rounded-lg">
+                        <p className="text-stone-500">Este profissional ainda não cadastrou serviços.</p>
+                    </div>
+                )}
+            </div>
+        );
+    };
     
+    // STEP 3: Select Date & Time
     const renderSelectDateTime = () => {
         const today = new Date();
         today.setHours(0,0,0,0);
-        const stepNumber = isServiceLedFlow ? 3 : 2;
         return (
             <div>
-                <h3 className="text-xl font-semibold mb-4 text-stone-700">{stepNumber}. Selecione Data e Hora</h3>
-                <input type="date" min={today.toISOString().split('T')[0]} value={selectedDate.toISOString().split('T')[0]} onChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))} className="w-full p-2 border border-stone-300 rounded-lg mb-4" />
-                {loadingAvailability ? <p>Verificando horários...</p> : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <h3 className="text-lg font-semibold mb-4 text-stone-700">Data e Horário</h3>
+                <div className="bg-stone-50 p-4 rounded-xl mb-4">
+                    <p className="text-xs font-bold text-stone-400 uppercase mb-1">Serviço Selecionado</p>
+                    <p className="font-bold text-stone-800">{selectedService?.name}</p>
+                    <p className="text-sm text-stone-600">Duração: {selectedService?.duration} min</p>
+                </div>
+
+                <label className="block text-sm font-bold text-stone-600 mb-2">Selecione o Dia</label>
+                <input 
+                    type="date" 
+                    min={today.toISOString().split('T')[0]} 
+                    value={selectedDate.toISOString().split('T')[0]} 
+                    onChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))} 
+                    className="w-full p-3 border border-stone-300 rounded-lg mb-6 focus:ring-2 focus:ring-rose-200 focus:outline-none" 
+                />
+                
+                <label className="block text-sm font-bold text-stone-600 mb-2">Horários Disponíveis</label>
+                {loadingAvailability ? (
+                    <div className="flex items-center gap-2 text-stone-500 text-sm"><div className="animate-spin h-4 w-4 border-2 border-rose-500 rounded-full border-t-transparent"></div> Buscando horários...</div>
+                ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1">
                         {timeSlots.length > 0 ? timeSlots.map(time => (
                             <button 
                                 key={time} 
@@ -235,84 +292,143 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                                     setJustSelectedTime(time);
                                     setTimeout(() => setJustSelectedTime(null), 300);
                                 }} 
-                                className={`p-2 rounded-lg transition-colors duration-200 ${selectedTime === time ? 'bg-rose-500 text-white' : 'bg-stone-100 hover:bg-stone-200 text-stone-700'} ${justSelectedTime === time ? 'animate-pop' : ''}`}
+                                className={`p-2 rounded-lg transition-all duration-200 text-sm font-bold ${selectedTime === time ? 'bg-rose-500 text-white shadow-md' : 'bg-stone-100 hover:bg-stone-200 text-stone-700'} ${justSelectedTime === time ? 'scale-95' : ''}`}
                             >
                                 {time}
                             </button>
-                        )) : <p className="text-stone-500 col-span-full text-center">Nenhum horário disponível para esta data.</p>}
+                        )) : <p className="text-stone-500 col-span-full text-center text-sm py-2 italic bg-stone-50 rounded-lg">Sem horários para esta data.</p>}
                     </div>
                 )}
             </div>
         );
     };
 
+    // STEP 4: Confirm
     const renderConfirm = () => {
-        const stepNumber = isServiceLedFlow ? 4 : 3;
         return (
-            <div>
-                <h3 className="text-xl font-semibold mb-4 text-stone-700">{stepNumber}. Confirme seu Agendamento</h3>
-                {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
-                <div className="bg-stone-50 p-4 rounded-lg space-y-3">
-                    <div><p className="text-sm text-stone-500">Profissional</p><p className="font-semibold text-stone-800">{selectedProfessional?.name}</p></div>
-                    <div><p className="text-sm text-stone-500">Serviço</p><p className="font-semibold text-stone-800">{selectedService?.name}</p></div>
-                    <div><p className="text-sm text-stone-500">Data e Hora</p><p className="font-semibold text-stone-800">{selectedDate.toLocaleDateString('pt-BR')} às {selectedTime}</p></div>
-                    <div><p className="text-sm text-stone-500">Valor Total</p><p className="font-bold text-lg text-rose-600">R$ {selectedService?.price.toFixed(2)}</p></div>
+            <div className="space-y-4">
+                <h3 className="text-xl font-semibold mb-4 text-stone-700">Confirmação</h3>
+                {error && <p className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center border border-red-100">{error}</p>}
+                
+                <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm space-y-3">
+                    <div className="flex justify-between border-b border-stone-100 pb-2">
+                        <span className="text-stone-500 text-sm">Profissional</span>
+                        <span className="font-semibold text-stone-800">{selectedProfessional?.name}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-stone-100 pb-2">
+                        <span className="text-stone-500 text-sm">Serviço</span>
+                        <span className="font-semibold text-stone-800">{selectedService?.name}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-stone-100 pb-2">
+                        <span className="text-stone-500 text-sm">Data</span>
+                        <span className="font-semibold text-stone-800">{selectedDate.toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-stone-100 pb-2">
+                        <span className="text-stone-500 text-sm">Horário</span>
+                        <span className="font-semibold text-stone-800">{selectedTime}</span>
+                    </div>
+                    <div className="flex justify-between pt-1">
+                        <span className="text-stone-800 font-bold">Total</span>
+                        <span className="font-black text-lg text-rose-600">R$ {selectedService?.price.toFixed(2)}</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-semibold text-stone-600 mb-2">Observações (Opcional)</label>
+                    <textarea 
+                        value={notes} 
+                        onChange={(e) => setNotes(e.target.value)} 
+                        placeholder="Alguma preferência ou aviso especial?"
+                        className="w-full p-3 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-200 focus:outline-none"
+                        rows={3}
+                    />
                 </div>
             </div>
         );
     };
 
+    // STEP 5: Success
     const renderSuccess = () => (
-        <div className="text-center"><CheckCircleIcon /><h3 className="text-2xl font-bold text-stone-800 mt-4">Agendamento Confirmado!</h3><p className="text-stone-600 mt-2">Você receberá uma confirmação por e-mail com todos os detalhes.</p><button onClick={onClose} className="mt-6 w-full bg-rose-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-rose-600 transition-colors duration-300">Fechar</button></div>
+        <div className="text-center py-8">
+            <CheckCircleIcon />
+            <h3 className="text-2xl font-bold text-stone-800 mt-4">Agendamento Confirmado!</h3>
+            <p className="text-stone-600 mt-2 max-w-xs mx-auto">Seu horário foi reservado com sucesso. Você pode ver os detalhes no seu painel.</p>
+            <button onClick={onClose} className="mt-8 w-full bg-rose-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-rose-600 transition-colors duration-300 shadow-lg shadow-rose-200">Voltar para o Início</button>
+        </div>
     );
 
-    const steps = isServiceLedFlow 
-        ? [renderSelectService, renderSelectProfessional, renderSelectDateTime, renderConfirm, renderSuccess]
-        : [renderSelectService, renderSelectDateTime, renderConfirm, renderSuccess];
+    // Dynamic Step Renderer
+    const renderCurrentStep = () => {
+        if (step === 1) return renderSelectProfessional();
+        if (step === 2) return renderSelectService();
+        if (step === 3) return renderSelectDateTime();
+        if (step === 4) return renderConfirm();
+        if (step === 5) return renderSuccess();
+        return null;
+    };
 
     const canGoNext = () => {
-        if (isServiceLedFlow) {
-            if (step === 3 && !selectedTime) return false;
-        } else {
-            if (step === 2 && !selectedTime) return false;
-        }
-        return true;
+        if (step === 1 && selectedProfessional) return true;
+        if (step === 2 && selectedService) return true;
+        if (step === 3 && selectedTime) return true;
+        return false;
     };
     
-    const isConfirmationStep = step === (isServiceLedFlow ? 4 : 3);
-    const isSuccessStep = step === (isServiceLedFlow ? 5 : 4);
+    const isConfirmationStep = step === 4;
+    const isSuccessStep = step === 5;
+    const showBackButton = step > (professional ? 2 : 1) && !isSuccessStep;
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative flex flex-col max-h-[90vh]">
-                <button onClick={onClose} aria-label="Fechar" className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 transition-colors"><XIcon /></button>
-                <div className="flex-shrink-0 mb-4 text-center">
-                    <h2 className="text-2xl font-bold text-stone-800">Agendar Serviço</h2>
-                    {selectedProfessional && <p className="text-stone-500">com {selectedProfessional.name}</p>}
-                </div>
-                <div className="flex-grow overflow-y-auto mb-6 pr-2">
-                    {steps[step - 1]()}
-                </div>
+                <button onClick={onClose} aria-label="Fechar" className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 transition-colors z-10 bg-white rounded-full p-1"><XIcon /></button>
+                
                 {!isSuccessStep && (
-                    <div className="mt-auto flex-shrink-0 flex items-center justify-between pt-4 border-t">
-                        <button onClick={handlePrevStep} disabled={step === 1 || isSubmitting} className="text-stone-600 font-semibold py-2 px-4 rounded-lg hover:bg-stone-100 disabled:opacity-50 disabled:cursor-not-allowed">Voltar</button>
+                    <div className="mb-4 text-center">
+                        <h2 className="text-xl font-bold text-stone-800">Agendar Atendimento</h2>
+                        <div className="flex justify-center mt-2 space-x-1">
+                            {[1, 2, 3, 4].map(i => {
+                                // Adjust dots based on flow start
+                                const visibleStep = professional ? i + 1 : i; 
+                                if (visibleStep > 4) return null;
+                                return (
+                                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${step >= visibleStep ? 'w-6 bg-rose-500' : 'w-2 bg-stone-200'}`} />
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+                
+                <div className="flex-grow overflow-y-auto mb-6 pr-1 custom-scrollbar">
+                    {renderCurrentStep()}
+                </div>
+                
+                {!isSuccessStep && (
+                    <div className="mt-auto flex-shrink-0 flex items-center justify-between pt-4 border-t border-stone-100 gap-4">
+                        {showBackButton ? (
+                            <button onClick={handlePrevStep} disabled={isSubmitting} className="flex-1 text-stone-600 font-bold py-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-200 transition-all">
+                                Voltar
+                            </button>
+                        ) : <div className="flex-1"></div>}
+                        
                         {isConfirmationStep ? (
-                             <button onClick={handleNextStep} disabled={isSubmitting} className="bg-rose-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-rose-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">{isSubmitting ? 'Confirmando...' : 'Confirmar Agendamento'}</button>
+                             <button onClick={handleNextStep} disabled={isSubmitting} className="flex-[2] bg-rose-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-rose-600 transition-colors duration-300 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-rose-100">
+                                {isSubmitting ? 'Confirmando...' : 'Confirmar Agendamento'}
+                             </button>
                         ) : (
-                            <button onClick={() => setStep(s => s + 1)} disabled={!canGoNext()} className="bg-rose-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-rose-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">Avançar</button>
+                            <button onClick={() => setStep(s => s + 1)} disabled={!canGoNext()} className="flex-[2] bg-rose-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-rose-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-100">
+                                Continuar
+                            </button>
                         )}
                     </div>
                 )}
             </div>
             <style>{`
-                @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-                .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
-                @keyframes pop {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.1); }
-                    100% { transform: scale(1); }
-                }
-                .animate-pop { animation: pop 0.3s ease-out; }
+                @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+                .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 4px; }
             `}</style>
         </div>
     );
