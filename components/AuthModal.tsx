@@ -67,9 +67,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     const handleSignup = async () => {
         setLoading(true);
         setError(null);
+        
         try {
-            // NOTA: Passamos objetos diretamente no metadados. 
-            // O Supabase entende isso e o PostgreSQL recebe como JSONB.
+            // Simplificamos os metadados para evitar erros de casting no gatilho do banco
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -80,34 +80,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                         role: role,
                         whatsapp: whatsapp.trim(),
                         image_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`,
+                        // Enviamos arrays vazios, que o PostgreSQL tratará como jsonb
                         specialty: [], 
-                        services: [],
-                        settings: {
-                            workHours: { start: '09:00', end: '18:00' },
-                            workDays: [1, 2, 3, 4, 5],
-                            blockedDays: [],
-                            blockedTimeSlots: {},
-                        }
+                        services: []
                     },
                 },
             });
 
             if (error) {
+                console.error("Supabase SignUp Error:", error);
+                
                 if (error.message.toLowerCase().includes('fetch')) {
                     setError("Erro de rede. O projeto Supabase pode estar pausado ou instável.");
                 } else if (error.message.toLowerCase().includes('database error')) {
-                    setError("Erro ao salvar perfil. Por favor, tente novamente.");
+                    // Se for erro de banco, mostramos a causa provável para o desenvolvedor ver no console
+                    setError(`Erro interno do servidor ao criar perfil. Verifique as configurações da tabela.`);
                 } else {
                     setError(error.message);
                 }
             } else {
-                alert('Cadastro realizado com sucesso! Você já pode entrar.');
+                alert('Cadastro realizado com sucesso! Verifique seu e-mail (se habilitado) ou entre com sua senha.');
                 setActiveTab('login');
             }
         } catch (e: any) {
+            console.error("Critical Signup Exception:", e);
             setError("Falha crítica ao realizar cadastro.");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -129,12 +129,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 
                 <div className="flex border-b mb-6">
                     <button 
+                        type="button"
                         onClick={() => setActiveTab('login')}
                         className={`w-1/2 py-3 font-semibold text-center transition-colors ${activeTab === 'login' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-stone-400'}`}
                     >
                         Entrar
                     </button>
                      <button 
+                        type="button"
                         onClick={() => setActiveTab('signup')}
                         className={`w-1/2 py-3 font-semibold text-center transition-colors ${activeTab === 'signup' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-stone-400'}`}
                     >
@@ -142,7 +144,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                     </button>
                 </div>
 
-                {error && <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg mb-4 text-center font-medium border border-red-100">{error}</div>}
+                {error && (
+                    <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg mb-4 text-center font-medium border border-red-100 flex flex-col gap-1">
+                        <span>{error}</span>
+                        {error.includes("perfil") && <span className="text-[10px] opacity-70">Certifique-se de ter executado o SQL de reparo no Supabase.</span>}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit}>
                     {activeTab === 'signup' && (
