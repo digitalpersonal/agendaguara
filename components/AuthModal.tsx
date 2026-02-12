@@ -53,13 +53,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             });
             if (error) {
                 setError(error.message === 'Failed to fetch' 
-                    ? "Erro de conexão. Verifique se o projeto Supabase está ativo." 
+                    ? "Erro de conexão. Verifique se o banco de dados está online." 
                     : "Email ou senha incorretos.");
             } else {
                 onClose();
             }
         } catch (e: any) {
-            setError("Falha na conexão. Verifique seu acesso à internet.");
+            setError("Falha na conexão. Tente novamente em instantes.");
         }
         setLoading(false);
     };
@@ -68,17 +68,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         setLoading(true);
         setError(null);
         try {
+            // NOTA: Passamos objetos diretamente no metadados. 
+            // O Supabase entende isso e o PostgreSQL recebe como JSONB.
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     emailRedirectTo: window.location.origin,
                     data: {
-                        name: name.trim(),
+                        name: name.trim() || 'Usuário',
                         role: role,
                         whatsapp: whatsapp.trim(),
-                        image_url: `https://i.pravatar.cc/150?u=${email}`,
-                        specialty: [],
+                        image_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`,
+                        specialty: [], 
                         services: [],
                         settings: {
                             workHours: { start: '09:00', end: '18:00' },
@@ -91,17 +93,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             });
 
             if (error) {
-                if (error.message === 'Failed to fetch') {
-                    setError("Erro de conexão com o servidor. Verifique se o projeto Supabase não está pausado no dashboard.");
+                if (error.message.toLowerCase().includes('fetch')) {
+                    setError("Erro de rede. O projeto Supabase pode estar pausado ou instável.");
+                } else if (error.message.toLowerCase().includes('database error')) {
+                    setError("Erro ao salvar perfil. Por favor, tente novamente.");
                 } else {
                     setError(error.message);
                 }
             } else {
-                alert('Cadastro realizado! Verifique seu e-mail para confirmar a conta (se habilitado) ou faça login agora.');
+                alert('Cadastro realizado com sucesso! Você já pode entrar.');
                 setActiveTab('login');
             }
         } catch (e: any) {
-            setError("Falha crítica ao realizar cadastro. Tente novamente mais tarde.");
+            setError("Falha crítica ao realizar cadastro.");
         }
         setLoading(false);
     };
@@ -126,13 +130,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 <div className="flex border-b mb-6">
                     <button 
                         onClick={() => setActiveTab('login')}
-                        className={`w-1/2 py-3 font-semibold text-center transition-colors ${activeTab === 'login' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-stone-500'}`}
+                        className={`w-1/2 py-3 font-semibold text-center transition-colors ${activeTab === 'login' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-stone-400'}`}
                     >
                         Entrar
                     </button>
                      <button 
                         onClick={() => setActiveTab('signup')}
-                        className={`w-1/2 py-3 font-semibold text-center transition-colors ${activeTab === 'signup' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-stone-500'}`}
+                        className={`w-1/2 py-3 font-semibold text-center transition-colors ${activeTab === 'signup' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-stone-400'}`}
                     >
                         Criar Conta
                     </button>
@@ -143,21 +147,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 <form onSubmit={handleSubmit}>
                     {activeTab === 'signup' && (
                         <div className="mb-6">
-                            <label className="block text-xs font-bold uppercase text-stone-400 mb-2">Você é um...</label>
+                            <label className="block text-xs font-bold uppercase text-stone-400 mb-2">Seu objetivo:</label>
                             <div className="grid grid-cols-2 gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setRole('client')}
                                     className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${role === 'client' ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-stone-50 border-stone-100 text-stone-500'}`}
                                 >
-                                    Cliente
+                                    Agendar
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setRole('professional')}
                                     className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${role === 'professional' ? 'bg-stone-900 border-stone-900 text-white' : 'bg-stone-50 border-stone-100 text-stone-500'}`}
                                 >
-                                    Profissional
+                                    Trabalhar
                                 </button>
                             </div>
                             
@@ -165,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start animate-fade-in-down">
                                     <InfoIcon />
                                     <p className="text-[11px] text-amber-800 leading-tight">
-                                        Após o cadastro, você terá acesso à sua <span className="font-bold underline">área de gestão</span> para cadastrar seus serviços, horários e personalizar seu perfil completo.
+                                        Como profissional, você terá um painel completo para gerir sua agenda e financeiro.
                                     </p>
                                 </div>
                             )}
@@ -202,26 +206,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                         </div>
                     </div>
                     
-                    <button type="submit" disabled={loading} className="w-full bg-rose-500 text-white font-black py-4 px-4 rounded-xl hover:bg-rose-600 transition-colors duration-300 shadow-lg shadow-rose-100 disabled:bg-stone-300 disabled:shadow-none">
-                        {loading ? 'Aguarde...' : (activeTab === 'login' ? 'ENTRAR' : 'CRIAR MINHA CONTA')}
+                    <button type="submit" disabled={loading} className="w-full bg-rose-500 text-white font-black py-4 px-4 rounded-xl hover:bg-rose-600 transition-colors duration-300 shadow-lg shadow-rose-100 disabled:bg-stone-300">
+                        {loading ? 'Processando...' : (activeTab === 'login' ? 'ENTRAR' : 'CADASTRAR')}
                     </button>
                 </form>
             </div>
-             <style>{`
-                @keyframes fade-in {
-                    from { opacity: 0; transform: scale(0.95); }
-                    to { opacity: 1; transform: scale(1); }
-                }
-                @keyframes fade-in-down {
-                    from { opacity: 0; transform: translateY(-10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in {
-                    animation: fade-in 0.2s ease-out forwards;
-                }
-                .animate-fade-in-down {
-                    animation: fade-in-down 0.3s ease-out forwards;
-                }
+            <style>{`
+                @keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
             `}</style>
         </div>
     );

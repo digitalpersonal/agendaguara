@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
  * Utilitário para executar funções assíncronas com lógica de retry (Backoff Exponencial).
- * Lida com o erro "Failed to fetch" (projeto pausado ou rede instável).
+ * Lida com o erro "Failed to fetch" (projeto pausado ou rede instável) e "The request was aborted".
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
@@ -31,6 +31,7 @@ export async function withRetry<T>(
         errorMessage.toLowerCase().includes('networkerror') ||
         errorMessage.toLowerCase().includes('load failed') ||
         errorMessage.toLowerCase().includes('failed to connect') ||
+        errorMessage.toLowerCase().includes('aborted') || // Captura o erro específico
         !navigator.onLine;
 
       // Se não for erro de rede ou já estourou os retries, desiste
