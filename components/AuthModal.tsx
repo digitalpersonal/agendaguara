@@ -52,11 +52,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 password,
             });
             if (error) {
-                setError("Email ou senha incorretos.");
+                setError(error.message === 'Failed to fetch' 
+                    ? "Erro de conexão. Verifique se o projeto Supabase está ativo." 
+                    : "Email ou senha incorretos.");
             } else {
                 onClose();
             }
-        } catch (e) {
+        } catch (e: any) {
             setError("Falha na conexão. Verifique seu acesso à internet.");
         }
         setLoading(false);
@@ -70,11 +72,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 email,
                 password,
                 options: {
+                    emailRedirectTo: window.location.origin,
                     data: {
                         name: name.trim(),
                         role: role,
                         whatsapp: whatsapp.trim(),
-                        imageUrl: `https://i.pravatar.cc/150?u=${email}`,
+                        image_url: `https://i.pravatar.cc/150?u=${email}`,
                         specialty: [],
                         services: [],
                         settings: {
@@ -88,13 +91,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             });
 
             if (error) {
-                setError(error.message);
+                if (error.message === 'Failed to fetch') {
+                    setError("Erro de conexão com o servidor. Verifique se o projeto Supabase não está pausado no dashboard.");
+                } else {
+                    setError(error.message);
+                }
             } else {
-                alert('Cadastro realizado! Agora você pode gerenciar sua agenda.');
-                onClose();
+                alert('Cadastro realizado! Verifique seu e-mail para confirmar a conta (se habilitado) ou faça login agora.');
+                setActiveTab('login');
             }
-        } catch (e) {
-            setError("Falha na conexão ao realizar cadastro.");
+        } catch (e: any) {
+            setError("Falha crítica ao realizar cadastro. Tente novamente mais tarde.");
         }
         setLoading(false);
     };

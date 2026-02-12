@@ -27,7 +27,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ user, onLoginRequired 
         const fetchProfessional = async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, name, specialties:specialty, imageUrl:image_url, services, settings')
+                .select('id, name, specialties:specialty, imageUrl:image_url, coverImageUrl:cover_image_url, services, settings, bio')
                 .eq('id', professionalId)
                 .single();
 

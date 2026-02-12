@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AdminUser, User, Specialty } from '../types';
 import { supabase } from '../utils/supabase';
@@ -73,7 +74,7 @@ const AddProfessionalModal: React.FC<{
         if (avatarFile) {
             try {
                 const fileExt = avatarFile.name.split('.').pop();
-                const filePath = `${crypto.randomUUID()}.${fileExt}`;
+                const filePath = `avatars/${crypto.randomUUID()}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('avatars')
@@ -90,41 +91,50 @@ const AddProfessionalModal: React.FC<{
                 imageUrl = urlData.publicUrl;
 
             } catch (uploadError: any) {
-                setError(`Erro no upload da imagem: ${uploadError.message}`);
-                setLoading(false);
-                return;
+                console.error("Erro no upload:", uploadError);
+                // Não interrompemos o cadastro se apenas a imagem falhar, usamos o fallback
             }
         }
 
-        const { data, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    name,
-                    role: 'professional',
-                    specialty: specialties,
-                    whatsapp,
-                    imageUrl,
-                    bio,
-                    settings: {
-                        workHours: { start: '09:00', end: '18:00' },
-                        workDays: [1, 2, 3, 4, 5],
-                        blockedDays: [],
-                        blockedTimeSlots: {},
+        try {
+            const { data, error: signUpError } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                    data: {
+                        name,
+                        role: 'professional',
+                        specialty: specialties,
+                        whatsapp,
+                        image_url: imageUrl,
+                        bio,
+                        settings: {
+                            workHours: { start: '09:00', end: '18:00' },
+                            workDays: [1, 2, 3, 4, 5],
+                            blockedDays: [],
+                            blockedTimeSlots: {},
+                        },
+                        services: []
                     },
-                    services: []
                 },
-            },
-        });
+            });
 
-        if (signUpError) {
-            setError(signUpError.message);
-        } else if (data.user) {
-            alert('Profissional cadastrado com sucesso!');
-            onSuccess();
+            if (signUpError) {
+                if (signUpError.message === 'Failed to fetch') {
+                    setError("Erro de rede. Verifique se o Supabase está ativo ou se há bloqueios de CORS.");
+                } else {
+                    setError(signUpError.message);
+                }
+            } else if (data.user) {
+                alert('Profissional cadastrado com sucesso! Um e-mail de confirmação foi enviado.');
+                onSuccess();
+            }
+        } catch (err: any) {
+            setError("Ocorreu um erro inesperado ao cadastrar o profissional.");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
@@ -135,7 +145,7 @@ const AddProfessionalModal: React.FC<{
                 </button>
                 <h2 className="text-2xl font-bold text-center text-stone-800 mb-6">Adicionar Novo Profissional</h2>
                 
-                {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
+                {error && <p className="text-red-500 text-sm text-center mb-4 font-medium p-2 bg-red-50 rounded border border-red-100">{error}</p>}
                 
                 <form onSubmit={handleSignup} className="space-y-4">
                     <div className="flex flex-col items-center text-center">

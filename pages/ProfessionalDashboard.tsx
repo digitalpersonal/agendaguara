@@ -51,6 +51,12 @@ const ChevronDownIcon = () => (
 const BellIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
 );
+const ShareIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+);
+const CopyIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+);
 
 const DayDetailPanel: React.FC<{
     selectedDate: Date;
@@ -555,6 +561,20 @@ const ProfileSettings: React.FC<{ user: ProfessionalUser; onProfileUpdate: (f: a
     const [bio, setBio] = useState(user.bio || '');
     const [coverUrl, setCoverUrl] = useState(user.coverImageUrl || '');
     const [uploading, setUploading] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const publicUrl = `${window.location.origin}/?ref=${user.id}`;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(publicUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleWhatsAppShare = () => {
+        const text = encodeURIComponent(`Olá! Você pode agendar meus serviços diretamente pela minha agenda online aqui: ${publicUrl}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+    };
 
     const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -594,43 +614,80 @@ const ProfileSettings: React.FC<{ user: ProfessionalUser; onProfileUpdate: (f: a
     };
 
     return (
-        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in">
-            <h3 className="text-2xl font-bold text-stone-800 mb-6">Identidade Visual e Perfil</h3>
-            
-            <div className="mb-10 group relative rounded-2xl overflow-hidden bg-stone-100 border-4 border-stone-50 shadow-inner h-48 md:h-64">
-                {coverUrl ? (
-                    <img src={coverUrl} alt="Capa" className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-stone-400">
-                        <CameraIcon />
-                        <span className="text-sm font-bold mt-2">Clique para adicionar uma capa</span>
+        <div className="bg-white p-8 rounded-xl shadow-lg animate-fade-in space-y-10">
+            <div>
+                <h3 className="text-2xl font-bold text-stone-800 mb-6">Seu Link de Agendamento</h3>
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6">
+                    <p className="text-sm text-stone-600 mb-4 leading-relaxed">
+                        Compartilhe este link com seus clientes em Guaranésia pelo WhatsApp ou Redes Sociais. 
+                        Ao acessarem, eles cairão direto na sua agenda.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <input 
+                            readOnly 
+                            value={publicUrl} 
+                            className="flex-grow bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm font-mono text-stone-500 focus:outline-none"
+                        />
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={handleCopy}
+                                className={`flex items-center justify-center px-6 py-3 rounded-xl font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-stone-800 text-white hover:bg-stone-900'}`}
+                            >
+                                <CopyIcon />
+                                {copied ? 'Copiado!' : 'Copiar'}
+                            </button>
+                            <button 
+                                onClick={handleWhatsAppShare}
+                                className="flex items-center justify-center bg-green-500 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-green-600 transition-all"
+                            >
+                                <ShareIcon />
+                                WhatsApp
+                            </button>
+                        </div>
                     </div>
-                )}
-                <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/0 hover:bg-black/20 transition-all group-hover:bg-black/10">
-                    <div className="bg-white/90 backdrop-blur p-3 rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                        <CameraIcon />
-                        <span className="text-xs font-black uppercase text-stone-800">{uploading ? 'Carregando...' : 'Trocar Capa'}</span>
-                    </div>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} disabled={uploading} />
-                </label>
+                </div>
             </div>
 
-            <div className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Nome Público</label>
-                        <input value={name} onChange={e => setName(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" />
+            <hr className="border-stone-100" />
+
+            <div>
+                <h3 className="text-2xl font-bold text-stone-800 mb-6">Identidade Visual e Perfil</h3>
+                
+                <div className="mb-10 group relative rounded-2xl overflow-hidden bg-stone-100 border-4 border-stone-50 shadow-inner h-48 md:h-64">
+                    {coverUrl ? (
+                        <img src={coverUrl} alt="Capa" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400">
+                            <CameraIcon />
+                            <span className="text-sm font-bold mt-2">Clique para adicionar uma capa</span>
+                        </div>
+                    )}
+                    <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/0 hover:bg-black/20 transition-all group-hover:bg-black/10">
+                        <div className="bg-white/90 backdrop-blur p-3 rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                            <CameraIcon />
+                            <span className="text-xs font-black uppercase text-stone-800">{uploading ? 'Carregando...' : 'Trocar Capa'}</span>
+                        </div>
+                        <input type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} disabled={uploading} />
+                    </label>
+                </div>
+
+                <div className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Nome Público</label>
+                            <input value={name} onChange={e => setName(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-stone-400 uppercase mb-2">WhatsApp de Agendamento</label>
+                            <input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" placeholder="(XX) XXXXX-XXXX" />
+                        </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">WhatsApp de Agendamento</label>
-                        <input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" placeholder="(XX) XXXXX-XXXX" />
+                        <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Descrição Detalhada / Bio</label>
+                        <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" rows={6} placeholder="Conte sua história, descreva seus diferenciais, experiência e o que seus clientes podem esperar do seu atendimento..." />
                     </div>
+                    <button onClick={handleSave} className="w-full bg-stone-900 text-white font-black py-4 rounded-xl hover:bg-stone-800 transition-all shadow-xl shadow-stone-100 mt-4">SALVAR ALTERAÇÕES NO PERFIL</button>
                 </div>
-                <div>
-                    <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Descrição Detalhada / Bio</label>
-                    <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-rose-200 focus:outline-none" rows={6} placeholder="Conte sua história, descreva seus diferenciais, experiência e o que seus clientes podem esperar do seu atendimento..." />
-                </div>
-                <button onClick={handleSave} className="w-full bg-stone-900 text-white font-black py-4 rounded-xl hover:bg-stone-800 transition-all shadow-xl shadow-stone-100 mt-4">SALVAR ALTERAÇÕES NO PERFIL</button>
             </div>
         </div>
     );

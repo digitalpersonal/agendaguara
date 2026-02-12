@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Professional, Service, User, ProfessionalUser, Appointment, ProfessionalSettings } from '../types';
-import { supabase } from '../utils/supabase';
+import { supabase, withRetry } from '../utils/supabase';
 
 interface BookingModalProps {
     professional?: Professional | null;
@@ -48,10 +48,6 @@ const generateTimeSlots = (date: Date, settings: ProfessionalSettings, professio
 };
 
 export const BookingModal: React.FC<BookingModalProps> = ({ professional, category, user, onClose }) => {
-    // Flow Logic:
-    // If professional provided: Step 1 = Services, Step 2 = Date, Step 3 = Confirm
-    // If category provided: Step 1 = Select Professional, Step 2 = Services, Step 3 = Date, Step 4 = Confirm
-    
     const initialStep = professional ? 2 : 1;
     const [step, setStep] = useState(initialStep);
     
@@ -71,51 +67,66 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch professionals if we are in "Category" flow
-    useEffect(() => {
-        if (!professional) {
-            const fetchProfessionals = async () => {
-                setLoadingProfessionals(true);
-                // In a real big app, we would filter by category in the DB query using a junction table or JSONB filter.
-                // For this scale, fetching all professionals and filtering/displaying is acceptable.
+    const fetchProfessionals = useCallback(async () => {
+        if (professional) return;
+        setLoadingProfessionals(true);
+        setError(null);
+        try {
+            const data = await withRetry(async () => {
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('id, name, specialties:specialty, imageUrl:image_url, coverImageUrl:cover_image_url, services, settings, bio')
+                    .select('id, name, specialty, image_url, cover_image_url, services, settings, bio')
                     .eq('role', 'professional');
-
-                if (error) {
-                    console.error("Error fetching professionals:", error);
-                    setError("Não foi possível carregar os profissionais.");
-                } else if (data) {
-                    setProfessionalsList(data as Professional[]);
-                }
-                setLoadingProfessionals(false);
-            };
-            fetchProfessionals();
+                if (error) throw error;
+                return data;
+            });
+            if (data) {
+                const normalized = data.map(p => ({
+                    ...p,
+                    imageUrl: p.image_url,
+                    coverImageUrl: p.cover_image_url,
+                    specialties: p.specialty
+                }));
+                setProfessionalsList(normalized as Professional[]);
+            }
+        } catch (err: any) {
+            console.error("Error fetching professionals in modal:", err);
+            setError(err.message?.toLowerCase().includes('fetch') 
+                ? "Erro de conexão. Verifique se o banco de dados está ativo." 
+                : "Não foi possível carregar os profissionais.");
+        } finally {
+            setLoadingProfessionals(false);
         }
     }, [professional]);
 
-    // Fetch availability when professional + date are selected
+    useEffect(() => {
+        fetchProfessionals();
+    }, [fetchProfessionals]);
+
     useEffect(() => {
         if (selectedProfessional?.settings && selectedDate) {
             const fetchAvailability = async () => {
                 setLoadingAvailability(true);
                 setSelectedTime(null);
                 const dateStr = selectedDate.toISOString().split('T')[0];
-                const { data, error } = await supabase
-                    .from('appointments')
-                    .select('time')
-                    .eq('professional_id', selectedProfessional.id)
-                    .eq('date', dateStr);
-
-                if (error) {
-                    console.error("Error fetching appointments for availability:", error);
-                    setTimeSlots([]);
-                } else {
+                try {
+                    const data = await withRetry(async () => {
+                        const { data, error } = await supabase
+                            .from('appointments')
+                            .select('time')
+                            .eq('professional_id', selectedProfessional.id)
+                            .eq('date', dateStr);
+                        if (error) throw error;
+                        return data;
+                    });
                     const slots = generateTimeSlots(selectedDate, selectedProfessional.settings!, data || []);
                     setTimeSlots(slots);
+                } catch (err: any) {
+                    console.error("Error fetching availability:", err);
+                    setTimeSlots([]);
+                } finally {
+                    setLoadingAvailability(false);
                 }
-                setLoadingAvailability(false);
             };
             fetchAvailability();
         }
@@ -131,49 +142,46 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         
         const dateStr = selectedDate.toISOString().split('T')[0];
         
-        // Double check for collisions
-        const { data: existingAppointment, error: checkError } = await supabase
-            .from('appointments')
-            .select('id')
-            .eq('client_id', user.id)
-            .eq('professional_id', selectedProfessional.id)
-            .eq('date', dateStr)
-            .eq('status', 'upcoming');
+        try {
+            // Check for collisions
+            const { data: existingAppointment, error: checkError } = await supabase
+                .from('appointments')
+                .select('id')
+                .eq('client_id', user.id)
+                .eq('professional_id', selectedProfessional.id)
+                .eq('date', dateStr)
+                .eq('status', 'upcoming');
 
-        if (checkError) {
-            setError("Erro de conexão. Tente novamente.");
-            setIsSubmitting(false);
-            return;
-        }
-        
-        if (existingAppointment && existingAppointment.length > 0) {
-            setError("Você já possui um agendamento com este profissional para esta data.");
-            setIsSubmitting(false);
-            return;
-        }
+            if (checkError) throw checkError;
+            
+            if (existingAppointment && existingAppointment.length > 0) {
+                setError("Você já possui um agendamento com este profissional para esta data.");
+                setIsSubmitting(false);
+                return;
+            }
 
-        const appointmentData = {
-            client_id: user.id,
-            professional_id: selectedProfessional.id,
-            client_name: user.name,
-            professional_name: selectedProfessional.name,
-            professional_image_url: selectedProfessional.imageUrl,
-            service_name: selectedService.name,
-            date: dateStr,
-            time: selectedTime,
-            price: selectedService.price,
-            notes: notes.trim(),
-            status: 'upcoming' as const
-        };
-        
-        const { error } = await supabase.from('appointments').insert([appointmentData]);
-        
-        if (error) {
-            console.error("Error creating appointment:", error);
-            setError("Não foi possível criar o agendamento.");
-            setIsSubmitting(false);
-        } else {
-            setStep(prev => prev + 1); // Move to Success Step
+            const appointmentData = {
+                client_id: user.id,
+                professional_id: selectedProfessional.id,
+                client_name: user.name,
+                professional_name: selectedProfessional.name,
+                professional_image_url: selectedProfessional.imageUrl,
+                service_name: selectedService.name,
+                date: dateStr,
+                time: selectedTime,
+                price: selectedService.price,
+                notes: notes.trim(),
+                status: 'upcoming' as const
+            };
+            
+            const { error: insertError } = await supabase.from('appointments').insert([appointmentData]);
+            if (insertError) throw insertError;
+
+            setStep(5); // Success Step
+        } catch (err: any) {
+            console.error("Error creating appointment:", err);
+            setError("Não foi possível criar o agendamento. Tente novamente.");
+        } finally {
             setIsSubmitting(false);
         }
     };
@@ -184,7 +192,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
     };
     const handlePrevStep = () => setStep(prev => prev - 1);
 
-    // STEP 1: Select Professional (Only if one wasn't passed in props)
     const renderSelectProfessional = () => {
         const title = category ? `1. Profissionais` : "1. Escolha um profissional";
         const subtitle = category ? `Especialistas em ${category}` : "Todos os especialistas";
@@ -194,7 +201,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                 <h3 className="text-xl font-semibold text-stone-700">{title}</h3>
                 <p className="text-sm text-stone-500 mb-4">{subtitle}</p>
                 {loadingProfessionals ? (
-                    <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div></div>
+                    <div className="flex flex-col items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mb-2"></div>
+                        <span className="text-xs text-stone-400">Consultando base...</span>
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-6 bg-red-50 rounded-lg p-4">
+                        <p className="text-red-600 text-sm mb-3">{error}</p>
+                        <button onClick={fetchProfessionals} className="text-xs font-bold bg-white border border-red-200 px-3 py-1 rounded-full text-red-600">Tentar Novamente</button>
+                    </div>
                 ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                         {professionalsList.length > 0 ? professionalsList.map(prof => (
@@ -202,7 +217,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                                 <img src={prof.imageUrl} alt={prof.name} className="w-12 h-12 rounded-full object-cover mr-4 border border-stone-200" />
                                 <div>
                                     <p className="font-semibold text-stone-800 group-hover:text-rose-600 transition-colors">{prof.name}</p>
-                                    <p className="text-xs text-stone-500">{prof.specialties?.map(s => s.name).join(', ')}</p>
+                                    <p className="text-xs text-stone-500">{(prof as any).specialties?.map((s: any) => s.name).join(', ')}</p>
                                 </div>
                             </div>
                         )) : <p className="text-stone-500 text-center py-4">Nenhum profissional disponível no momento.</p>}
@@ -212,7 +227,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         );
     };
 
-    // STEP 2: Select Service
     const renderSelectService = () => {
         if (!selectedProfessional) return null;
         
@@ -231,7 +245,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                     </div>
                     <div className="pt-12 px-6">
                         <h4 className="text-xl font-bold text-stone-800">{selectedProfessional.name}</h4>
-                        <p className="text-sm text-stone-500">{selectedProfessional.specialties?.map(s => s.name).join(' • ')}</p>
+                        <p className="text-sm text-stone-500">{(selectedProfessional as any).specialties?.map((s: any) => s.name).join(' • ')}</p>
                     </div>
                 </div>
 
@@ -257,7 +271,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         );
     };
     
-    // STEP 3: Select Date & Time
     const renderSelectDateTime = () => {
         const today = new Date();
         today.setHours(0,0,0,0);
@@ -281,7 +294,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                 
                 <label className="block text-sm font-bold text-stone-600 mb-2">Horários Disponíveis</label>
                 {loadingAvailability ? (
-                    <div className="flex items-center gap-2 text-stone-500 text-sm"><div className="animate-spin h-4 w-4 border-2 border-rose-500 rounded-full border-t-transparent"></div> Buscando horários...</div>
+                    <div className="flex items-center gap-2 text-stone-500 text-sm"><div className="animate-spin h-4 w-4 border-2 border-rose-500 rounded-full border-t-transparent"></div> Buscando...</div>
                 ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1">
                         {timeSlots.length > 0 ? timeSlots.map(time => (
@@ -296,14 +309,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                             >
                                 {time}
                             </button>
-                        )) : <p className="text-stone-500 col-span-full text-center text-sm py-2 italic bg-stone-50 rounded-lg">Sem horários para esta data.</p>}
+                        )) : <p className="text-stone-500 col-span-full text-center text-sm py-2 italic bg-stone-50 rounded-lg">Sem horários nesta data.</p>}
                     </div>
                 )}
             </div>
         );
     };
 
-    // STEP 4: Confirm
     const renderConfirm = () => {
         return (
             <div className="space-y-4">
@@ -338,7 +350,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                     <textarea 
                         value={notes} 
                         onChange={(e) => setNotes(e.target.value)} 
-                        placeholder="Alguma preferência ou aviso especial?"
+                        placeholder="Alguma preferência especial?"
                         className="w-full p-3 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-200 focus:outline-none"
                         rows={3}
                     />
@@ -347,7 +359,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         );
     };
 
-    // STEP 5: Success
     const renderSuccess = () => (
         <div className="text-center py-8">
             <CheckCircleIcon />
@@ -357,7 +368,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
         </div>
     );
 
-    // Dynamic Step Renderer
     const renderCurrentStep = () => {
         if (step === 1) return renderSelectProfessional();
         if (step === 2) return renderSelectService();
@@ -388,7 +398,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ professional, catego
                         <h2 className="text-xl font-bold text-stone-800">Agendar Atendimento</h2>
                         <div className="flex justify-center mt-2 space-x-1">
                             {[1, 2, 3, 4].map(i => {
-                                // Adjust dots based on flow start
                                 const visibleStep = professional ? i + 1 : i; 
                                 if (visibleStep > 4) return null;
                                 return (
