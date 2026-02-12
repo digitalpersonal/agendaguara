@@ -74,7 +74,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         setError(null);
         
         try {
-            // Enviamos dados básicos. O Gatilho SQL cuidará do resto.
+            // Os nomes das chaves aqui devem ser idênticos aos esperados pelo Gatilho SQL (new.raw_user_meta_data->>'chave')
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -85,8 +85,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                         role: role,
                         whatsapp: whatsapp.trim(),
                         image_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`,
-                        specialty: [], 
-                        services: [],
+                        specialty: [], // Garante que seja um JSON array
+                        services: [],  // Garante que seja um JSON array
                         bio: ""
                     },
                 },
@@ -96,7 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 console.error("SignUp Detail:", error);
                 
                 if (error.message.toLowerCase().includes('database error')) {
-                    setError("Erro ao criar perfil. Execute o script SQL de reparo no console do Supabase.");
+                    setError("Erro ao criar perfil. Por favor, execute o script SQL de reparo no console do Supabase (SQL Editor).");
                 } else if (error.message.toLowerCase().includes('already registered')) {
                     setError("Este e-mail já está cadastrado.");
                 } else {

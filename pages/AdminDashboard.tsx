@@ -69,7 +69,7 @@ const AddProfessionalModal: React.FC<{
         setLoading(true);
         setError(null);
         
-        let imageUrl = `https://i.pravatar.cc/150?u=${email}`;
+        let imageUrl = `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`;
 
         if (avatarFile) {
             try {
@@ -92,42 +92,43 @@ const AddProfessionalModal: React.FC<{
 
             } catch (uploadError: any) {
                 console.error("Erro no upload:", uploadError);
-                // Não interrompemos o cadastro se apenas a imagem falhar, usamos o fallback
             }
         }
 
         try {
+            // Os nomes das chaves aqui devem ser idênticos aos esperados pelo Gatilho SQL (new.raw_user_meta_data->>'chave')
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     emailRedirectTo: window.location.origin,
                     data: {
-                        name,
+                        name: name.trim(),
                         role: 'professional',
-                        specialty: specialties,
-                        whatsapp,
+                        specialty: specialties, // Banco espera JSONB
+                        whatsapp: whatsapp.trim(),
                         image_url: imageUrl,
-                        bio,
+                        bio: bio.trim(),
                         settings: {
                             workHours: { start: '09:00', end: '18:00' },
                             workDays: [1, 2, 3, 4, 5],
                             blockedDays: [],
                             blockedTimeSlots: {},
                         },
-                        services: []
+                        services: [] // Banco espera JSONB
                     },
                 },
             });
 
             if (signUpError) {
-                if (signUpError.message === 'Failed to fetch') {
-                    setError("Erro de rede. Verifique se o Supabase está ativo ou se há bloqueios de CORS.");
+                console.error("Admin SignUp Error:", signUpError);
+                if (signUpError.message.toLowerCase().includes('database error')) {
+                    setError("Erro ao criar perfil. Por favor, execute o script SQL de reparo no console do Supabase.");
                 } else {
                     setError(signUpError.message);
                 }
             } else if (data.user) {
-                alert('Profissional cadastrado com sucesso! Um e-mail de confirmação foi enviado.');
+                alert('Profissional cadastrado com sucesso!');
                 onSuccess();
             }
         } catch (err: any) {
