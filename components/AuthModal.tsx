@@ -65,46 +65,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     };
 
     const handleSignup = async () => {
+        if (!name.trim()) {
+            setError("Por favor, informe seu nome.");
+            return;
+        }
+
         setLoading(true);
         setError(null);
         
         try {
-            // Simplificamos os metadados para evitar erros de casting no gatilho do banco
+            // Enviamos dados básicos. O Gatilho SQL cuidará do resto.
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     emailRedirectTo: window.location.origin,
                     data: {
-                        name: name.trim() || 'Usuário',
+                        name: name.trim(),
                         role: role,
                         whatsapp: whatsapp.trim(),
                         image_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`,
-                        // Enviamos arrays vazios, que o PostgreSQL tratará como jsonb
                         specialty: [], 
-                        services: []
+                        services: [],
+                        bio: ""
                     },
                 },
             });
 
             if (error) {
-                console.error("Supabase SignUp Error:", error);
+                console.error("SignUp Detail:", error);
                 
-                if (error.message.toLowerCase().includes('fetch')) {
-                    setError("Erro de rede. O projeto Supabase pode estar pausado ou instável.");
-                } else if (error.message.toLowerCase().includes('database error')) {
-                    // Se for erro de banco, mostramos a causa provável para o desenvolvedor ver no console
-                    setError(`Erro interno do servidor ao criar perfil. Verifique as configurações da tabela.`);
+                if (error.message.toLowerCase().includes('database error')) {
+                    setError("Erro ao criar perfil. Execute o script SQL de reparo no console do Supabase.");
+                } else if (error.message.toLowerCase().includes('already registered')) {
+                    setError("Este e-mail já está cadastrado.");
                 } else {
                     setError(error.message);
                 }
             } else {
-                alert('Cadastro realizado com sucesso! Verifique seu e-mail (se habilitado) ou entre com sua senha.');
+                alert('Cadastro realizado com sucesso! Você já pode entrar.');
                 setActiveTab('login');
             }
         } catch (e: any) {
-            console.error("Critical Signup Exception:", e);
-            setError("Falha crítica ao realizar cadastro.");
+            console.error("Critical Signup Error:", e);
+            setError("Ocorreu um erro inesperado no cadastro.");
         } finally {
             setLoading(false);
         }
@@ -147,7 +151,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 {error && (
                     <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg mb-4 text-center font-medium border border-red-100 flex flex-col gap-1">
                         <span>{error}</span>
-                        {error.includes("perfil") && <span className="text-[10px] opacity-70">Certifique-se de ter executado o SQL de reparo no Supabase.</span>}
                     </div>
                 )}
 
