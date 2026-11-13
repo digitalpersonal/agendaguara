@@ -1,5 +1,6 @@
 {
   "name": "AgendaGuara",
   "description": "A modern and responsive web application for scheduling beauty, health, and pet shop services. It provides an intuitive interface for clients to book appointments, and for professionals and administrators to manage them.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }
